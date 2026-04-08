@@ -60,7 +60,7 @@ class RoleService {
               permission: true,
             },
           },
-          userRoleAssignments: true,
+          userRoles: true,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -76,7 +76,7 @@ class RoleService {
           module: rp.permission.module,
           action: rp.permission.action,
         })),
-        userCount: role.userRoleAssignments.length,
+        userCount: role.userRoles.length,
         createdAt: role.createdAt,
       }));
     } catch (error) {
@@ -95,7 +95,7 @@ class RoleService {
               permission: true,
             },
           },
-          userRoleAssignments: {
+          userRoles: {
             include: {
               user: {
                 select: {
@@ -124,7 +124,7 @@ class RoleService {
           module: rp.permission.module,
           action: rp.permission.action,
         })),
-        users: role.userRoleAssignments.map(ura => ({
+        users: role.userRoles.map(ura => ({
           id: ura.user.id,
           email: ura.user.email,
           name: ura.user.name,
@@ -426,7 +426,7 @@ class RoleService {
       const role = await prisma.role.findUnique({
         where: { id: roleId },
         include: {
-          userRoleAssignments: {
+          userRoles: {
             include: {
               user: {
                 select: {
@@ -449,8 +449,8 @@ class RoleService {
       return {
         roleId: role.id,
         roleName: role.name,
-        users: role.userRoleAssignments.map(ura => ura.user),
-        totalUsers: role.userRoleAssignments.length,
+        users: role.userRoles.map(ura => ura.user),
+        totalUsers: role.userRoles.length,
       };
     } catch (error) {
       throw error;

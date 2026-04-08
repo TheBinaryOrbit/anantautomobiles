@@ -305,6 +305,92 @@ class UserService {
       throw error;
     }
   }
+
+  async getAllUsers() {
+    try {
+      const users = await prisma.user.findMany({
+        where: { isDeleted: false },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          userRoles: {
+            select: {
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return users.map(user => ({
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        name: user.name,
+        role: user.role,
+        roles: user.userRoles.map(ur => ur.role),
+        createdAt: user.createdAt,
+      }));
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async assignRolesToUser(userId, roleIds) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new Error(`User with ID '${userId}' not found`);
+      }
+
+      // Verify all roles exist
+      const roles = await prisma.role.findMany({
+        where: {
+          id: { in: roleIds },
+        },
+      });
+
+      if (roles.length !== roleIds.length) {
+        throw new Error('One or more roles do not exist');
+      }
+
+      // Clear existing roles and assign new ones
+      await prisma.userRoleAssignment.deleteMany({
+        where: { userId },
+      });
+
+      const userRoles = await Promise.all(
+        roleIds.map(roleId =>
+          prisma.userRoleAssignment.create({
+            data: {
+              userId,
+              roleId,
+            },
+          })
+        )
+      );
+
+      return {
+        userId,
+        rolesAssigned: roleIds.length,
+        message: `${roleIds.length} roles assigned to user`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new UserService();

@@ -88,6 +88,47 @@ class SalesController {
       return ApiResponse.badRequest(res, error.message);
     }
   }
+
+  async updatePendingAmount(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { pendingAmount } = req.body;
+
+      if (!id) {
+        return ApiResponse.badRequest(res, 'Sale ID is required');
+      }
+
+      if (pendingAmount === undefined || typeof pendingAmount !== 'number' || pendingAmount < 0) {
+        return ApiResponse.badRequest(res, 'Pending Amount must be a non-negative number');
+      }
+
+      const sale = await salesService.updatePendingAmount(id, pendingAmount);
+      return ApiResponse.success(res, 'Pending amount updated successfully', sale, 200);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return ApiResponse.notFound(res, error.message);
+      }
+      return ApiResponse.badRequest(res, error.message);
+    }
+  }
+
+  async deleteSale(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return ApiResponse.badRequest(res, 'Sale ID is required');
+      }
+
+      const sale = await salesService.deleteSale(id);
+      return ApiResponse.success(res, 'Sale deleted successfully', sale, 200);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return ApiResponse.notFound(res, error.message);
+      }
+      return ApiResponse.badRequest(res, error.message);
+    }
+  }
 }
 
 module.exports = new SalesController();

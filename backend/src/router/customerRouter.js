@@ -5,6 +5,7 @@ const { authMiddleware, adminCheck } = require('../middleware/auth');
 const router = express.Router();
 
 // Public routes - GET
+router.get('/search', (req, res, next) => customerController.searchCustomers(req, res, next));
 router.get('/', (req, res, next) => customerController.getAllCustomers(req, res, next));
 router.get('/:id', (req, res, next) => customerController.getCustomer(req, res, next));
 

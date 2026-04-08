@@ -182,6 +182,7 @@ class SalesService {
       const totalAmount = subtotal - totalDiscountAmount + totalTaxAmount;
       const pendingAmount = parseFloat(saleData.pendingAmount) || 0;
       const isPaid = pendingAmount === 0;
+      const status = pendingAmount === 0 ? 'CONFIRMED' : 'PENDING';
 
       // Create sale with items
       const sale = await prisma.sale.create({
@@ -193,6 +194,7 @@ class SalesService {
           totalAmount,
           pendingAmount,
           isPaid,
+          status,
           paymentType: saleData.paymentType,
           paymentMethod: saleData.paymentMethod,
           notes: saleData.notes || null,
@@ -210,6 +212,27 @@ class SalesService {
           },
         },
       });
+
+      // Update inventory and bike status after sale is created
+      for (const item of saleItemsData) {
+        if (item.itemType === 'BIKE') {
+          // Update bike status to SOLD
+          await prisma.bike.update({
+            where: { id: item.bikeId },
+            data: { status: 'SOLD' },
+          });
+        } else if (item.itemType === 'ACCESSORY') {
+          // Decrease accessory quantity
+          await prisma.accessories.update({
+            where: { id: item.accessoryId },
+            data: {
+              quantityInStock: {
+                decrement: item.quantity,
+              },
+            },
+          });
+        }
+      }
 
       // Generate and save invoice
       const invoiceInfo = await invoiceService.saveInvoice(sale);
@@ -311,6 +334,110 @@ class SalesService {
 
       return sale;
     } catch (error) {
+      if (error.code === 'P2025') {
+        throw { message: 'Sale not found', statusCode: 404 };
+      }
+      throw error;
+    }
+  }
+
+  async updatePendingAmount(id, pendingAmount) {
+    try {
+      const sale = await prisma.sale.findUnique({
+        where: { id },
+      });
+
+      if (!sale) {
+        throw { message: 'Sale not found', statusCode: 404 };
+      }
+
+      const isPaid = pendingAmount === 0;
+      const status = pendingAmount === 0 ? 'CONFIRMED' : 'PENDING';
+
+      const updatedSale = await prisma.sale.update({
+        where: { id },
+        data: {
+          pendingAmount,
+          isPaid,
+          status,
+        },
+        include: {
+          customer: { include: { address: true } },
+          items: {
+            include: {
+              bike: { include: { model: true } },
+              accessory: true,
+            },
+          },
+        },
+      });
+
+      return updatedSale;
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw { message: 'Sale not found', statusCode: 404 };
+      }
+      throw error;
+    }
+  }
+
+  async deleteSale(id) {
+    try {
+      // First check if sale exists with all items
+      const sale = await prisma.sale.findUnique({
+        where: { id },
+        include: {
+          items: {
+            include: {
+              bike: true,
+              accessory: true,
+            },
+          },
+        },
+      });
+
+      if (!sale || sale.isDeleted) {
+        throw { message: 'Sale not found', statusCode: 404 };
+      }
+
+      // Update bikes status to AVAILABLE
+      for (const item of sale.items) {
+        if (item.bikeId) {
+          await prisma.bike.update({
+            where: { id: item.bikeId },
+            data: { status: 'AVAILABLE' },
+          });
+        }
+
+        // Increase accessory quantity
+        if (item.accessoryId) {
+          await prisma.accessories.update({
+            where: { id: item.accessoryId },
+            data: { quantityInStock: { increment: item.quantity } },
+          });
+        }
+      }
+
+      // Soft delete the sale
+      const deletedSale = await prisma.sale.update({
+        where: { id },
+        data: { isDeleted: true },
+        include: {
+          customer: { include: { address: true } },
+          items: {
+            include: {
+              bike: { include: { model: true } },
+              accessory: true,
+            },
+          },
+        },
+      });
+
+      return deletedSale;
+    } catch (error) {
+      if (error.statusCode === 404) {
+        throw error;
+      }
       if (error.code === 'P2025') {
         throw { message: 'Sale not found', statusCode: 404 };
       }

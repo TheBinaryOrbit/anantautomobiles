@@ -117,6 +117,21 @@ class CustomerController {
       return ApiResponse.badRequest(res, error.message);
     }
   }
+
+  async searchCustomers(req, res, next) {
+    try {
+      const { q } = req.query;
+
+      if (!q || q.trim() === '') {
+        return ApiResponse.badRequest(res, 'Search query is required');
+      }
+
+      const customers = await customerService.searchCustomers(q.trim());
+      return ApiResponse.success(res, 'Customers searched successfully', customers, 200);
+    } catch (error) {
+      return ApiResponse.badRequest(res, error.message);
+    }
+  }
 }
 
 module.exports = new CustomerController();

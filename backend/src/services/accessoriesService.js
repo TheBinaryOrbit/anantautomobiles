@@ -15,6 +15,7 @@ class AccessoriesService {
     }
 
     if (!data.price || data.price <= 0) {
+      // console.log('Price is missing or invalid:', data.price);
       errors.push({ field: 'price', message: 'Price must be a positive number' });
     }
 
@@ -97,7 +98,7 @@ class AccessoriesService {
     }
 
     if (data.price !== undefined) {
-      if (typeof data.price !== 'number' || data.price <= 0) {
+      if (data.price <= 0) {
         if (file) fs.unlinkSync(file.path);
         throw {
           field: 'price',
@@ -119,7 +120,7 @@ class AccessoriesService {
     }
 
     if (data.quantityInStock !== undefined) {
-      if (typeof data.quantityInStock !== 'number' || data.quantityInStock < 0) {
+      if (data.quantityInStock < 0) {
         if (file) fs.unlinkSync(file.path);
         throw {
           field: 'quantityInStock',
@@ -171,7 +172,7 @@ class AccessoriesService {
 
   async updateQuantity(id, quantityInStock) {
     try {
-      if (typeof quantityInStock !== 'number' || quantityInStock < 0) {
+      if (quantityInStock < 0) {
         throw {
           field: 'quantityInStock',
           message: 'Quantity in Stock must be a non-negative number',

@@ -182,6 +182,26 @@ class CustomerService {
       throw error;
     }
   }
+
+  async searchCustomers(query) {
+    try {
+      const customers = await prisma.customer.findMany({
+        where: {
+          isDeleted: false,
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+            { phone: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        include: { address: true },
+      });
+
+      return customers;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new CustomerService();

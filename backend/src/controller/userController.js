@@ -48,6 +48,15 @@ class UserController {
     }
   }
 
+  async getAllUsers(req, res, next) {
+    try {
+      const users = await userService.getAllUsers();
+      return ApiResponse.success(res, 'Users retrieved successfully', users, 200);
+    } catch (error) {
+      return ApiResponse.badRequest(res, error.message);
+    }
+  }
+
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
@@ -104,6 +113,22 @@ class UserController {
 
       const hasPermission = await userService.hasPermission(userId, permissionKey);
       return ApiResponse.success(res, 'Permission check completed', { hasPermission }, 200);
+    } catch (error) {
+      return ApiResponse.badRequest(res, error.message);
+    }
+  }
+
+  async assignRolesToUser(req, res, next) {
+    try {
+      const { userId } = req.params;
+      const { roleIds } = req.body;
+
+      if (!userId || !roleIds || !Array.isArray(roleIds)) {
+        return ApiResponse.badRequest(res, 'User ID and role IDs array are required');
+      }
+
+      const result = await userService.assignRolesToUser(userId, roleIds);
+      return ApiResponse.success(res, 'Roles assigned to user', result, 200);
     } catch (error) {
       return ApiResponse.badRequest(res, error.message);
     }

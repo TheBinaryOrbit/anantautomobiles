@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ───── Design Tokens ───── */
+:root {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  /* Backgrounds */
+  --bg-primary:   #FFFFFF;
+  --bg-secondary: #F8F7F4;
+  --bg-tertiary:  #F1EFE8;
+  --bg-sidebar:   #0F0E0C;
+
+  /* Text */
+  --text-primary:   #1A1917;
+  --text-secondary: #6B6860;
+  --text-tertiary:  #A8A49D;
+  --text-inverse:   #FFFFFF;
+
+  /* Borders */
+  --border-primary:   rgba(26,25,23,0.12);
+  --border-secondary: rgba(26,25,23,0.08);
+
+  /* Brand */
+  --brand:        #534AB7;
+  --brand-light:  #EEEDFE;
+  --brand-dark:   #3C3489;
+
+  /* Status */
+  --success-bg:  #EAF3DE; --success-fg:  #27500A;
+  --warning-bg:  #FAEEDA; --warning-fg:  #633806;
+  --info-bg:     #E6F1FB; --info-fg:     #0C447C;
+  --purple-bg:   #EEEDFE; --purple-fg:   #3C3489;
+  --danger-bg:   #FCEBEB; --danger-fg:   #791F1F;
+  --pink-bg:     #FBEAF0; --pink-fg:     #72243E;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+}
+
+/* ───── Reset ───── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ───── Scrollbar ───── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 99px; }
+
+/* ───── Toast overrides ───── */
+.Toastify__toast { font-family: var(--font-sans) !important; font-size: 13px !important; border-radius: var(--radius-md) !important; }
+.Toastify__toast--success { background: var(--success-bg) !important; color: var(--success-fg) !important; }
+.Toastify__toast--error   { background: var(--danger-bg) !important; color: var(--danger-fg) !important; }
+.Toastify__progress-bar--success { background: var(--success-fg) !important; }
+.Toastify__progress-bar--error   { background: var(--danger-fg) !important; }
+.Toastify__close-button { color: currentColor !important; opacity: 0.5 !important; }

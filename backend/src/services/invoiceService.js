@@ -1,147 +1,140 @@
 const fs = require('fs');
 const path = require('path');
+const PDFDocument = require('pdfkit');
 
 class InvoiceService {
-  generateInvoiceHTML(sale) {
-    const saleId = sale.id;
-    const saleDate = new Date(sale.saleDate).toLocaleDateString();
-    const customer = sale.customer;
+  generateInvoicePDF(sale, filePath) {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50 });
+        const stream = fs.createWriteStream(filePath);
 
-    let itemsHTML = '';
-    sale.items.forEach((item, index) => {
-      const itemName =
-        item.itemType === 'BIKE'
-          ? `${item.bike.model.brand} ${item.bike.model.name} (${item.bike.color})`
-          : item.accessory.name;
+        doc.pipe(stream);
 
-      itemsHTML += `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${itemName}</td>
-          <td style="text-align: right">${item.quantity}</td>
-          <td style="text-align: right">₹${item.unitPrice.toFixed(2)}</td>
-          <td style="text-align: right">₹${(item.discountAmount * item.quantity).toFixed(2)}</td>
-          <td style="text-align: right">${item.taxRate.toFixed(2)}%</td>
-          <td style="text-align: right">₹${item.lineTotal.toFixed(2)}</td>
-        </tr>
-      `;
+        // Header
+        doc.fontSize(24).font('Helvetica-Bold').text('INVOICE', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fontSize(11).font('Helvetica').text(`Invoice #: ${sale.id}`, { align: 'center' });
+        doc.text(`Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`, { align: 'center' });
+        doc.moveDown(1);
+
+        // Bill To
+        doc.fontSize(12).font('Helvetica-Bold').text('Bill To:');
+        doc.fontSize(10).font('Helvetica');
+        doc.text(sale.customer.name);
+        doc.text(`Email: ${sale.customer.email}`);
+        doc.text(`Phone: ${sale.customer.phone}`);
+        doc.text(`${sale.customer.address.addressLine1}${sale.customer.address.addressLine2 ? ', ' + sale.customer.address.addressLine2 : ''}`);
+        doc.text(`${sale.customer.address.city}, ${sale.customer.address.state} ${sale.customer.address.postalCode}`);
+        doc.text(sale.customer.address.country);
+        doc.moveDown(0.5);
+
+        // Payment Details
+        const pageWidth = doc.page.width - 100;
+        doc.fontSize(12).font('Helvetica-Bold').text('Payment Details:', { x: pageWidth / 2 + 50 });
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Payment Type: ${sale.paymentType}`, { x: pageWidth / 2 + 50 });
+        doc.text(`Payment Method: ${sale.paymentMethod}`, { x: pageWidth / 2 + 50 });
+        doc.text(`Status: ${sale.status}`, { x: pageWidth / 2 + 50 });
+        doc.moveDown(1);
+
+        // Items Table Header
+        const tableTop = doc.y;
+        const col1 = 50;
+        const col2 = 120;
+        const col3 = 250;
+        const col4 = 320;
+        const col5 = 390;
+
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.text('#', col1, tableTop);
+        doc.text('Item', col2, tableTop);
+        doc.text('Qty', col3, tableTop, { align: 'right' });
+        doc.text('Unit Price', col4, tableTop, { align: 'right' });
+        doc.text('Line Total', col5, tableTop, { align: 'right' });
+
+        doc.moveTo(50, tableTop + 15).lineTo(pageWidth + 100, tableTop + 15).stroke();
+        doc.moveDown(0.7);
+
+        // Items
+        doc.fontSize(9).font('Helvetica');
+        sale.items.forEach((item, index) => {
+          const itemName = item.itemType === 'BIKE' 
+            ? `${item.bike.model.brand} ${item.bike.model.name} (${item.bike.color})`
+            : item.accessory.name;
+
+          doc.text(`${index + 1}`, col1);
+          doc.text(itemName, col2);
+          doc.text(item.quantity.toString(), col3, doc.y - 12, { align: 'right' });
+          doc.text(`₹${item.unitPrice.toFixed(2)}`, col4, doc.y + 12, { align: 'right' });
+          doc.text(`₹${item.lineTotal.toFixed(2)}`, col5, doc.y, { align: 'right' });
+          
+          if (item.discountAmount > 0) {
+            doc.fontSize(8).text(`Discount: -₹${(item.discountAmount * item.quantity).toFixed(2)} (${item.taxRate}% tax)`, col2);
+          } else {
+            doc.fontSize(8).text(`Tax: ${item.taxRate}%`, col2);
+          }
+          doc.moveDown(0.5);
+        });
+
+        doc.moveTo(50, doc.y).lineTo(pageWidth + 100, doc.y).stroke();
+        doc.moveDown(0.5);
+
+        // Summary
+        const summaryX = 320;
+        doc.fontSize(10).font('Helvetica');
+        doc.text('Subtotal:', summaryX, doc.y, { width: 80 });
+        doc.text(`₹${sale.subtotal.toFixed(2)}`, summaryX + 80, doc.y - 12, { align: 'right' });
+
+        doc.moveDown(0.4);
+        doc.text('Discount:', summaryX, doc.y, { width: 80 });
+        doc.text(`-₹${sale.discountAmount.toFixed(2)}`, summaryX + 80, doc.y - 12, { align: 'right' });
+
+        doc.moveDown(0.4);
+        doc.text('Tax:', summaryX, doc.y, { width: 80 });
+        doc.text(`₹${sale.taxAmount.toFixed(2)}`, summaryX + 80, doc.y - 12, { align: 'right' });
+
+        doc.moveDown(0.6);
+        doc.fontSize(12).font('Helvetica-Bold');
+        doc.text('Total:', summaryX, doc.y, { width: 80 });
+        doc.text(`₹${sale.totalAmount.toFixed(2)}`, summaryX + 80, doc.y - 12, { align: 'right' });
+
+        doc.moveDown(0.4);
+        doc.fontSize(10).font('Helvetica');
+        doc.text('Pending:', summaryX, doc.y, { width: 80 });
+        doc.text(`₹${sale.pendingAmount.toFixed(2)}`, summaryX + 80, doc.y - 12, { align: 'right' });
+
+        doc.moveDown(1.5);
+        doc.fontSize(9).text('Thank you for your purchase!', { align: 'center' });
+        doc.text(`Generated on ${new Date().toLocaleString('en-IN')}`, { align: 'center' });
+
+        doc.end();
+
+        stream.on('finish', () => resolve());
+        stream.on('error', reject);
+      } catch (error) {
+        reject(error);
+      }
     });
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Invoice - ${saleId}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .details { margin-bottom: 20px; }
-          .details-row { display: flex; gap: 40px; margin-bottom: 10px; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          .summary { float: right; width: 300px; margin: 20px 0; }
-          .summary-row { display: flex; justify-content: space-between; padding: 5px 0; }
-          .summary-row.total { font-weight: bold; font-size: 1.2em; border-top: 2px solid black; margin-top: 10px; }
-          .footer { clear: both; margin-top: 40px; text-align: center; color: #666; font-size: 0.9em; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>INVOICE</h1>
-          <p>Invoice #: <strong>${saleId}</strong></p>
-          <p>Date: <strong>${saleDate}</strong></p>
-        </div>
-
-        <div class="details">
-          <div class="details-row">
-            <div>
-              <h3>Bill To:</h3>
-              <p><strong>${customer.name}</strong></p>
-              <p>Email: ${customer.email}</p>
-              <p>Phone: ${customer.phone}</p>
-              <p>${customer.address.addressLine1}${customer.address.addressLine2 ? ', ' + customer.address.addressLine2 : ''}</p>
-              <p>${customer.address.city}, ${customer.address.state} ${customer.address.postalCode}</p>
-              <p>${customer.address.country}</p>
-            </div>
-            <div>
-              <h3>Payment Details:</h3>
-              <p>Payment Type: <strong>${sale.paymentType}</strong></p>
-              <p>Payment Method: <strong>${sale.paymentMethod}</strong></p>
-              <p>Status: <strong>${sale.status}</strong></p>
-            </div>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Item</th>
-              <th style="text-align: right">Qty</th>
-              <th style="text-align: right">Unit Price</th>
-              <th style="text-align: right">Discount</th>
-              <th style="text-align: right">Tax %</th>
-              <th style="text-align: right">Line Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHTML}
-          </tbody>
-        </table>
-
-        <div class="summary">
-          <div class="summary-row">
-            <span>Subtotal:</span>
-            <span>₹${sale.subtotal.toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Discount:</span>
-            <span>-₹${sale.discountAmount.toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Tax:</span>
-            <span>₹${sale.taxAmount.toFixed(2)}</span>
-          </div>
-          <div class="summary-row total">
-            <span>Total:</span>
-            <span>₹${sale.totalAmount.toFixed(2)}</span>
-          </div>
-          <div class="summary-row" style="color: ${sale.isPaid ? 'green' : 'red'}; font-weight: bold;">
-            <span>Pending:</span>
-            <span>₹${sale.pendingAmount.toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div class="footer">
-          <p>Thank you for your purchase!</p>
-          <p>Generated on ${new Date().toLocaleString()}</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    return html;
   }
 
   async saveInvoice(sale) {
     try {
-      const invoicesDir = path.join(__dirname, '../../upload/invoices');
+      const invoicesDir = path.join(__dirname, '../../uploads/invoices');
 
       // Create invoices directory if it doesn't exist
       if (!fs.existsSync(invoicesDir)) {
         fs.mkdirSync(invoicesDir, { recursive: true });
       }
 
-      const invoiceHTML = this.generateInvoiceHTML(sale);
-      const fileName = `invoice-${sale.id}-${Date.now()}.html`;
+      const fileName = `invoice-${sale.id}-${Date.now()}.pdf`;
       const filePath = path.join(invoicesDir, fileName);
 
-      fs.writeFileSync(filePath, invoiceHTML);
+      await this.generateInvoicePDF(sale, filePath);
 
       return {
         fileName,
-        url: `/uploads/invoices/${fileName}`,
+        url: `uploads/invoices/${fileName}`,
         fullPath: filePath,
       };
     } catch (error) {
@@ -153,8 +146,8 @@ class InvoiceService {
     try {
       if (!invoiceUrl) return;
 
-      const fileName = invoiceUrl.replace('/uploads/invoices/', '');
-      const filePath = path.join(__dirname, '../../upload/invoices', fileName);
+      const fileName = invoiceUrl.replace('uploads/invoices/', '');
+      const filePath = path.join(__dirname, '../../uploads/invoices', fileName);
 
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
