@@ -1,0 +1,365 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model user {
+  id       String @id @default(uuid())
+  email    String @unique
+  phone    String @unique
+  password String
+  name     String
+  role     String @default("USER")
+
+  // deleted flag for soft deletes
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userRoles UserRoleAssignment[]
+}
+
+model BikeModel {
+  id          String @id @default(uuid())
+  name        String @unique
+  brand       String
+  category    String
+  imageUrl    String
+  description String
+
+  // optional fields for more detailed information about the bike model
+  engineCapacity Int?
+  fuelType       String?
+  launchYear     Int?
+  mileage        Float?
+  weight         Float?
+
+  // price and tax information
+  exShowroomPrice  Float?
+  rtoCharges       Float?
+  insuranceCharges Float?
+  otherCharges     Float?
+  onRoadPrice      Float?
+  gstRate          Float?
+  hsnCode          String?
+
+  // deleted flag for soft deletes
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bikes Bike[]
+
+  @@map("bike_models")
+}
+
+model Bike {
+  id String @id @default(uuid())
+
+  engineNumber  String @unique
+  chassisNumber String @unique
+  modelId       String
+  color         String
+
+  status BikeStatus @default(AVAILABLE)
+
+  manufactureYear    Int
+  manufactureMonth   Months
+  registrationNumber String? @unique
+
+  purchasePrice Float? // cost to showroom
+  purchaseDate  DateTime?
+
+  salePrice Float?
+
+  model BikeModel @relation(fields: [modelId], references: [id])
+
+  // deleted flag for soft deletes
+  isDeleted Boolean @default(false)
+
+  // supply chain relationships
+  supplierId String?
+  supplier   supplier? @relation(fields: [supplierId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  saleItems SaleItem[]
+
+  @@map("bikes")
+}
+
+model accessories {
+  id String @id @default(uuid())
+
+  name        String
+  description String
+  price       Float
+  imageUrl    String
+  unit        String // uppercase must be specified (e.g., "PIECE", "SET", "BOX")
+
+  quantityInStock Int
+
+  // deleted flag for soft deletes
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  saleItems SaleItem[]
+
+  @@map("accessories")
+}
+
+model Sale {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   customer @relation(fields: [customerId], references: [id])
+
+  saleDate DateTime   @default(now())
+  status   SaleStatus @default(PENDING)
+
+  // financials (computed from SaleItems, stored for reporting)
+  subtotal       Float
+  discountAmount Float @default(0)
+  taxAmount      Float @default(0)
+  totalAmount    Float
+  pendingAmount  Float @default(0)
+
+  isPaid        Boolean       @default(false)
+  paymentType   paymentType
+  paymentMethod paymentMethod
+
+  notes     String?
+  invoiceUrl String? // URL to the generated invoice
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items SaleItem[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id     String @id @default(uuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id])
+
+  itemType SaleItemType
+
+  // exactly one of these will be set
+  bikeId String?
+  bike   Bike?   @relation(fields: [bikeId], references: [id])
+
+  accessoryId String?
+  accessory   accessories? @relation(fields: [accessoryId], references: [id])
+
+  quantity       Int   @default(1) // always 1 for bikes
+  unitPrice      Float
+  discountAmount Float @default(0)
+  taxRate        Float @default(0)
+  lineTotal      Float // (unitPrice - discountAmount) * quantity * (1 + taxRate)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sale_items")
+}
+
+model supplier {
+  id String @id @default(uuid())
+
+  // basic supplier information
+  name  String
+  email String @unique
+  phone String @unique
+
+  companyName  String
+  supplierType supplierType
+
+  addressId String
+  address   address @relation(fields: [addressId], references: [id])
+
+  // deleted flag for soft deletes
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bikes Bike[]
+
+  @@map("suppliers")
+}
+
+model customer {
+  id String @id @default(uuid())
+
+  // basic customer information
+  name  String
+  email String @unique
+  phone String @unique
+
+  addressId String
+  address   address @relation(fields: [addressId], references: [id])
+
+  // deleted flag for soft deletes
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+
+  @@map("customers")
+}
+
+model address {
+  id String @id @default(uuid())
+
+  // common address fields
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customers customer[]
+  suppliers supplier[]
+
+  @@map("addresses")
+}
+
+
+model Role {
+  id             String           @id @default(uuid())
+  name           String           @unique
+  description    String?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  userRoles       UserRoleAssignment[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id             String           @id @default(uuid())
+  key            String           @unique
+  module         String
+  action         String
+  description    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String      @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime    @default(now())
+
+  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRoleAssignment {
+  id        String    @id @default(uuid())
+  userId    String
+  roleId    String
+  createdAt DateTime  @default(now())
+
+  user      user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+enum SaleStatus {
+  PENDING // payment not yet received
+  CONFIRMED // payment received
+  DELIVERED // bike/items handed over
+  CANCELLED
+  REFUNDED
+}
+
+enum SaleItemType {
+  BIKE
+  ACCESSORY
+}
+
+enum BikeStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  IN_SERVICE
+}
+
+enum supplierType {
+  MANUFACTURER
+  DEALER
+  WHOLESALER
+  RETAILER
+  OTHER
+}
+
+enum Months {
+  JANUARY
+  FEBRUARY
+  MARCH
+  APRIL
+  MAY
+  JUNE
+  JULY
+  AUGUST
+  SEPTEMBER
+  OCTOBER
+  NOVEMBER
+  DECEMBER
+}
+
+enum paymentType {
+  Full
+  FULL_AND_PENDING
+  DOWN_PAYMENT_AND_FINANCE
+  DOWN_PAYMENT_AND_FINANCE_AND_PENDING
+  OTHER
+}
+
+enum paymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  UPI
+  CHEQUE
+  NET_BANKING
+  OTHER
+}
