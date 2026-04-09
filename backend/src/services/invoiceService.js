@@ -108,6 +108,88 @@ class InvoiceService {
         doc.fontSize(9).text('Thank you for your purchase!', { align: 'center' });
         doc.text(`Generated on ${new Date().toLocaleString('en-IN')}`, { align: 'center' });
 
+        // New Page - Gate Pass
+        doc.addPage();
+        doc.fontSize(20).font('Helvetica-Bold').text('GATE PASS', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fontSize(11).font('Helvetica').text(`Invoice #: ${sale.id}`, { align: 'center' });
+        doc.text(`Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`, { align: 'center' });
+        doc.moveDown(1.2);
+
+        // Customer Details Section
+        doc.fontSize(12).font('Helvetica-Bold').text('CUSTOMER DETAILS');
+        doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+        doc.moveDown(0.5);
+
+        doc.fontSize(10).font('Helvetica-Bold').text('Name:');
+        doc.fontSize(10).font('Helvetica').text(sale.customer.name);
+        
+        doc.fontSize(10).font('Helvetica-Bold').text('Email:');
+        doc.fontSize(10).font('Helvetica').text(sale.customer.email);
+        
+        doc.fontSize(10).font('Helvetica-Bold').text('Phone:');
+        doc.fontSize(10).font('Helvetica').text(sale.customer.phone);
+        
+        doc.fontSize(10).font('Helvetica-Bold').text('Address:');
+        doc.fontSize(10).font('Helvetica').text(
+          `${sale.customer.address.addressLine1}${sale.customer.address.addressLine2 ? ', ' + sale.customer.address.addressLine2 : ''}, ${sale.customer.address.city}, ${sale.customer.address.state} ${sale.customer.address.postalCode}, ${sale.customer.address.country}`
+        );
+        
+        doc.moveDown(1);
+
+        // Gate Pass Items Table
+        const gatePageWidth = doc.page.width - 100;
+        const gateTableTop = doc.y;
+        const gateCol1 = 50;
+        const gateCol2 = 100;
+        const gateCol3 = 250;
+        const gateCol4 = 420;
+
+        doc.fontSize(11).font('Helvetica-Bold').text('ITEMS', 50, gateTableTop);
+        doc.moveDown(0.6);
+
+        const gateItemTableTop = doc.y;
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.text('#', gateCol1, gateItemTableTop);
+        doc.text('Description', gateCol2, gateItemTableTop);
+        doc.text('Details', gateCol3, gateItemTableTop);
+        doc.text('Qty', gateCol4, gateItemTableTop, { align: 'right' });
+
+        doc.moveTo(50, gateItemTableTop + 18).lineTo(gatePageWidth + 100, gateItemTableTop + 18).stroke();
+        doc.moveDown(0.8);
+
+        // Gate Pass Items with Details
+        doc.fontSize(9).font('Helvetica');
+        sale.items.forEach((item, index) => {
+          const itemName = item.itemType === 'BIKE' 
+            ? `${item.bike.model.brand} ${item.bike.model.name} (${item.bike.color})`
+            : item.accessory.name;
+
+          doc.text(`${index + 1}`, gateCol1, doc.y);
+          doc.text(itemName, gateCol2, doc.y - 0, { width: 140 });
+          
+          // Details column
+          if (item.itemType === 'BIKE') {
+            const detailsText = `Engine: ${item.bike.engineNumber}\nChassis: ${item.bike.chassisNumber}`;
+            doc.text(detailsText, gateCol3, doc.y - 0, { width: 150 });
+          } else {
+            doc.text('—', gateCol3, doc.y - 0);
+          }
+          
+          doc.text(item.quantity.toString(), gateCol4, doc.y - (item.itemType === 'BIKE' ? 12 : 0), { align: 'right' });
+          
+          doc.moveDown(item.itemType === 'BIKE' ? 1 : 0.4);
+        });
+
+        doc.moveTo(50, doc.y).lineTo(gatePageWidth + 100, doc.y).stroke();
+        doc.moveDown(1.5);
+
+        // Signature Area
+        doc.fontSize(10).font('Helvetica-Bold').text('Authorized Signature:', { align: 'left' });
+        doc.moveDown(2);
+        doc.moveTo(50, doc.y).lineTo(250, doc.y).stroke();
+        doc.fontSize(9).text('(Gate Officer)', 50, doc.y + 5);
+
         doc.end();
 
         stream.on('finish', () => resolve());
