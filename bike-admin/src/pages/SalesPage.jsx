@@ -126,14 +126,19 @@ export default function SalesPage() {
     setLoading(true);
     try {
       const payload = {
-        ...form,
+        customerId: form.customerId,
+        paymentType: form.paymentType,
+        paymentMethod: form.paymentMethod,
         pendingAmount: parseFloat(form.pendingAmount) || 0,
+        notes: form.notes || '',
         items: form.items.map(it => ({
-          ...it,
-          quantity:       parseInt(it.quantity),
-          unitPrice:      parseFloat(it.unitPrice),
+          itemType: it.itemType,
+          bikeId: it.itemType === 'BIKE' ? it.bikeId : null,
+          accessoryId: it.itemType === 'ACCESSORY' ? it.accessoryId : null,
+          quantity: parseInt(it.quantity),
+          unitPrice: parseFloat(it.unitPrice),
           discountAmount: parseFloat(it.discountAmount) || 0,
-          taxRate:        parseFloat(it.taxRate) || 0,
+          taxRate: parseFloat(it.taxRate) || 0,
         })),
       };
       await salesApi.create(payload);
