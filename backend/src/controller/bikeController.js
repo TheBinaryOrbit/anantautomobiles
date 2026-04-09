@@ -114,7 +114,7 @@ class BikeController {
         return ApiResponse.badRequest(res, 'Bike ID is required');
       }
 
-      const bike = await bikeService.updateBike(id, { status: 'RESERVED' });
+      const bike = await bikeService.updateStatus(id, 'RESERVED');
       return ApiResponse.success(res, 'Bike marked as booked successfully', bike, 200);
     } catch (error) {
       if (error.statusCode === 404) {

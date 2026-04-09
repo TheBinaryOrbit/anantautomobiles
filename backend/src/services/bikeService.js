@@ -35,16 +35,16 @@ class BikeService {
       });
     }
 
-    if (data.purchasePrice) {
-      errors.push({ field: 'purchasePrice', message: 'Purchase Price must be a number' });
+    if (!data.purchasePrice || data.purchasePrice <= 0) {
+      errors.push({ field: 'purchasePrice', message: 'Purchase Price must be a positive number' });
     }
 
     // if (data.registrationNumber && typeof data.registrationNumber !== 'string') {
     //   errors.push({ field: 'registrationNumber', message: 'Registration Number must be a string' });
     // }
 
-    if (data.salePrice) {
-      errors.push({ field: 'salePrice', message: 'Sale Price must be a number' });
+    if (!data.salePrice || data.salePrice <= 0) {
+      errors.push({ field: 'salePrice', message: 'Sale Price must be a positive number' });
     }
 
     return errors;
@@ -79,10 +79,10 @@ class BikeService {
           manufactureYear: data.manufactureYear,
           manufactureMonth: data.manufactureMonth,
           registrationNumber: data.registrationNumber || null,
-          purchasePrice: data.purchasePrice || null,
-          purchaseDate: data.purchaseDate || null,
+          purchasePrice: +(data.purchasePrice) || null,
+          purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
           supplierId: data.supplierId || null,
-          salePrice: data.salePrice || null,
+          salePrice: +(data.salePrice) || null,
         },
         include: { model: true },
       });
@@ -139,6 +139,38 @@ class BikeService {
       throw error;
     }
   }
+
+  async updateStatus(id, status) {
+    {
+      try {
+        if (!VALID_BIKE_STATUSES.includes(status)) {
+          throw {
+            field: 'status',
+            message: `Status must be one of: ${VALID_BIKE_STATUSES.join(', ')}`,
+          };
+        }
+        const bike = await prisma.bike.update({
+          where: { id },
+          data: { status },
+          include: { model: true },
+        });
+
+        return bike;
+      } catch (error) {
+        if (error.code === 'P2025') {
+          throw { message: 'Bike not found', statusCode: 404 };
+        }
+        if (error.code === 'P2002') {
+          throw {
+            field: error.meta.target[0],
+            message: `Bike with this ${error.meta.target[0]} already exists`,
+          };
+        }
+        throw error;
+      }
+    }
+  }
+
 
   async deleteBike(id) {
     try {
