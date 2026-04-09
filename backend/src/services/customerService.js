@@ -69,6 +69,8 @@ class CustomerService {
           name: customerData.name,
           email: customerData.email,
           phone: customerData.phone,
+          aadhaarNumber: customerData.aadhaarNumber || null,
+          panNumber: customerData.panNumber || null,
           addressId: address.id,
         },
         include: { address: true },
@@ -117,6 +119,8 @@ class CustomerService {
           name: customerData.name,
           email: customerData.email,
           phone: customerData.phone,
+          aadhaarNumber: customerData.aadhaarNumber || null,
+          panNumber: customerData.panNumber || null,
         },
         include: { address: true },
       });

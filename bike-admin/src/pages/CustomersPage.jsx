@@ -42,7 +42,7 @@ export default function CustomersPage() {
     setLoading(true);
     try {
       const { name, email, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country } = form;
-      const payload = { name, email, phone, aadhaarNumber, panNumber, address: { addressLine1, city, state, postalCode, country } };
+      const payload = { name, email, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country };
       if (modal.id) await customersApi.update(modal.id, payload);
       else           await customersApi.create(payload);
       toast.success(modal.id ? 'Customer updated' : 'Customer added');

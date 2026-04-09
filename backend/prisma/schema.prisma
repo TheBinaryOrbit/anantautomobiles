@@ -214,6 +214,10 @@ model customer {
   email String @unique
   phone String @unique
 
+  // optional identification documents
+  aadhaarNumber String?
+  panNumber     String?
+
   addressId String
   address   address @relation(fields: [addressId], references: [id])
 
