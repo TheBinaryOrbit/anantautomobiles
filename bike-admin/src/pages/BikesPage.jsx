@@ -52,7 +52,19 @@ export default function BikesPage() {
   const save = async () => {
     setLoading(true);
     try {
-      const payload = { ...form, manufactureYear: parseInt(form.manufactureYear) };
+      const payload = {
+        engineNumber: form.engineNumber,
+        chassisNumber: form.chassisNumber,
+        modelId: form.modelId,
+        color: form.color,
+        status: form.status,
+        manufactureYear: parseInt(form.manufactureYear),
+        manufactureMonth: form.manufactureMonth,
+        registrationNumber: form.registrationNumber,
+        purchasePrice: form.purchasePrice ? parseInt(form.purchasePrice) : null,
+        salePrice: form.salePrice ? parseInt(form.salePrice) : null,
+        supplierId: form.supplierId || null,
+      };
       if (modal.id) await bikesApi.update(modal.id, payload);
       else           await bikesApi.create(payload);
       toast.success(modal.id ? 'Bike updated' : 'Bike added');
