@@ -42,7 +42,7 @@ export default function SuppliersPage() {
     setLoading(true);
     try {
       const { name, email, phone, companyName, supplierType, addressLine1, city, state, postalCode, country } = form;
-      const payload = { name, email, phone, companyName, supplierType, address: { addressLine1, city, state, postalCode, country } };
+      const payload = { name, email, phone, companyName, supplierType, addressLine1, city, state, postalCode, country};
       if (modal.id) await suppliersApi.update(modal.id, payload);
       else           await suppliersApi.create(payload);
       toast.success(modal.id ? 'Supplier updated' : 'Supplier added');
