@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { salesApi, customersApi, bikesApi, accessoriesApi } from '../api/services';
 import { SALE_STATUSES, PAYMENT_TYPES, PAYMENT_METHODS, STATUS_COLORS, fmtINR, STATIC_BASE } from '../utils/constants';
 import {
-  PageHeader, SearchBar, Table, Badge, Modal,
+  PageHeader, SearchBar, Table, Badge, Modal, FormGrid,
   Field, Input, Select, Button, Card, StatCard,
 } from '../components/ui';
 
@@ -53,7 +53,11 @@ export default function SalesPage() {
     if (statusFilter !== 'ALL') f = f.filter(s => s.status === statusFilter);
     if (search) {
       const q = search.toLowerCase();
-      f = f.filter(s => s.customer?.name?.toLowerCase().includes(q) || s.id?.toLowerCase().includes(q));
+      f = f.filter(s =>
+        s.customer?.name?.toLowerCase().includes(q) ||
+        s.saleNumber?.toLowerCase().includes(q) ||
+        s.id?.toLowerCase().includes(q)
+      );
     }
     setFiltered(f);
   }, [search, statusFilter, sales]);
@@ -109,7 +113,25 @@ export default function SalesPage() {
   }));
 
   const updateItem = (i, key, val) => setForm(f => {
-    const items = [...f.items]; items[i] = { ...items[i], [key]: val }; return { ...f, items };
+    const items = [...f.items];
+    const currentItem = { ...items[i], [key]: val };
+
+    if (key === 'bikeId' && val) {
+      const selectedBike = bikes.find(b => b.id === val);
+      if (selectedBike) {
+        currentItem.unitPrice = selectedBike.exShowroomPrice || 0;
+      }
+    }
+
+    if (key === 'accessoryId' && val) {
+      const selectedAccessory = accessories.find(a => a.id === val);
+      if (selectedAccessory) {
+        currentItem.unitPrice = selectedAccessory.price || 0;
+      }
+    }
+
+    items[i] = currentItem;
+    return { ...f, items };
   });
 
   const removeItem = (i) => setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }));
@@ -164,7 +186,7 @@ export default function SalesPage() {
   };
 
   const cols = [
-    { key: 'id',            label: 'Sale ID',  render: r => <code style={{ fontSize: 11, background: 'var(--brand-light)', color: 'var(--brand-dark)', padding: '2px 6px', borderRadius: 4 }}>{r.id?.slice(0, 8)}…</code> },
+    { key: 'saleNumber',    label: 'Sale No.', render: r => <code style={{ fontSize: 11, background: 'var(--brand-light)', color: 'var(--brand-dark)', padding: '2px 6px', borderRadius: 4 }}>{r.saleNumber || r.id?.slice(0, 8)}…</code> },
     { key: 'customer',      label: 'Customer', render: r => r.customer?.name || '—' },
     { key: 'totalAmount',   label: 'Total',    render: r => fmtINR(r.totalAmount) },
     { key: 'status',        label: 'Status',   render: r => <Badge label={r.status} /> },
@@ -176,7 +198,7 @@ export default function SalesPage() {
 
   return (
     <div>
-      <PageHeader icon={ShoppingCart} title="Sales" subtitle="Manage sales orders and invoices" onAdd={() => { setForm(EMPTY_FORM); setModal({ title: 'New Sale' }); }} addLabel="New Sale" />
+      <PageHeader icon={ShoppingCart} title="Sales" subtitle="Manage sales orders and invoices" onAdd={() => navigate('/sales/new')} addLabel="New Sale" />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px,1fr))', gap: 10, marginBottom: '1.25rem' }}>
         {SALE_STATUSES.map(s => (
@@ -244,7 +266,7 @@ export default function SalesPage() {
 
       {modal && (
         <Modal title={modal.title} onClose={() => setModal(null)} width={720}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <FormGrid>
             <Field label="Customer *">
               <div style={{ display: 'flex', gap: 8 }}>
                 <Input value={form.customerId ? customers.find(c => c.id === form.customerId)?.name : 'Select customer'} readOnly style={{ flex: 1, cursor: 'pointer', background: 'var(--bg-secondary)' }} />
@@ -267,7 +289,7 @@ export default function SalesPage() {
             <Field label="Notes" style={{ gridColumn: '1/-1' }}>
               <Input value={form.notes || ''} onChange={e => setF('notes', e.target.value)} />
             </Field>
-          </div>
+          </FormGrid>
 
           {/* Items */}
           <div style={{ borderTop: '0.5px solid var(--border-secondary)', paddingTop: 14, marginBottom: 14 }}>
@@ -423,13 +445,13 @@ export default function SalesPage() {
 
       {/* Invoice View Modal */}
       {invoiceModal && (
-        <Modal title={`Invoice #${invoiceModal.id?.slice(0, 8)}`} onClose={() => setInvoiceModal(null)} width={600}>
+        <Modal title={`Invoice #${invoiceModal.saleNumber || invoiceModal.id?.slice(0, 8)}`} onClose={() => setInvoiceModal(null)} width={600}>
           <div style={{ marginBottom: 20 }}>
             {/* Invoice Header Info */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sale ID</p>
-                <p style={{ fontSize: 14, fontWeight: 600 }}>{invoiceModal.id?.slice(0, 8)}…</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sale No.</p>
+                <p style={{ fontSize: 14, fontWeight: 600 }}>{invoiceModal.saleNumber || invoiceModal.id?.slice(0, 8)}…</p>
               </div>
               <div>
                 <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sale Date</p>

@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { accessoriesApi } from '../api/services';
 import { STATIC_BASE, fmtINR } from '../utils/constants';
 import {
-  PageHeader, SearchBar, Table, Modal, Field,
+  PageHeader, SearchBar, Table, Modal, FormGrid, Field,
   Input, Textarea, Button, Card, ConfirmDialog,
 } from '../components/ui';
 
@@ -103,7 +103,7 @@ export default function AccessoriesPage() {
 
       {modal && (
         <Modal title={modal.title} onClose={() => setModal(null)}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormGrid>
             <Field label="Name *"><Input value={form.name || ''} onChange={e => set('name', e.target.value)} /></Field>
             <Field label="Unit *"><Input value={form.unit || ''} onChange={e => set('unit', e.target.value)} placeholder="PIECE, SET, BOX" /></Field>
             <Field label="Price *"><Input type="number" value={form.price || ''} onChange={e => set('price', e.target.value)} /></Field>
@@ -114,7 +114,7 @@ export default function AccessoriesPage() {
             <Field label="Image" style={{ gridColumn: '1/-1' }}>
               <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} style={{ fontSize: 13, fontFamily: 'var(--font-sans)' }} />
             </Field>
-          </div>
+          </FormGrid>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
             <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>
             <Button onClick={save} disabled={loading}>{loading ? 'Saving…' : 'Save'}</Button>

@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { bikeModelsApi } from '../api/services';
 import { STATIC_BASE, fmtINR } from '../utils/constants';
 import {
-  PageHeader, SearchBar, Table, Modal, Field,
+  PageHeader, SearchBar, Table, Modal, FormGrid, Field,
   Input, Textarea, Button, Card, ConfirmDialog,
 } from '../components/ui';
 
@@ -92,7 +92,7 @@ export default function BikeModelsPage() {
 
       {modal && (
         <Modal title={modal.title} onClose={() => setModal(null)} width={680}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormGrid>
             <Field label="Name *"><Input value={form.name || ''} onChange={e => set('name', e.target.value)} /></Field>
             <Field label="Brand *"><Input value={form.brand || ''} onChange={e => set('brand', e.target.value)} /></Field>
             <Field label="Category *"><Input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="e.g. Commuter, Sports" /></Field>
@@ -117,7 +117,7 @@ export default function BikeModelsPage() {
             <Field label="On-Road Price"><Input type="number" value={form.onRoadPrice || ''} onChange={e => set('onRoadPrice', e.target.value)} /></Field>
             <Field label="GST Rate (%)"><Input type="number" value={form.gstRate || ''} onChange={e => set('gstRate', e.target.value)} /></Field>
             <Field label="HSN Code"><Input value={form.hsnCode || ''} onChange={e => set('hsnCode', e.target.value)} /></Field>
-          </div>
+          </FormGrid>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
             <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>
             <Button onClick={save} disabled={loading}>{loading ? 'Saving…' : 'Save'}</Button>

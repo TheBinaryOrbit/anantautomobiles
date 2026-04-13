@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import useWindowSize from './hooks/useWindowSize.js';
 
 import LoginPage         from './pages/LoginPage';
 import DashboardPage     from './pages/DashboardPage';
@@ -12,6 +14,7 @@ import AccessoriesPage   from './pages/AccessoriesPage';
 import CustomersPage     from './pages/CustomersPage';
 import SuppliersPage     from './pages/SuppliersPage';
 import SalesPage         from './pages/SalesPage';
+import SalesCreatePage   from './pages/SalesCreatePage';
 import SalesDetailPage   from './pages/SalesDetailPage';
 import RolesPage         from './pages/RolesPage';
 import UsersPage         from './pages/UsersPage';
@@ -21,12 +24,19 @@ import TopBar  from './components/TopBar';
 
 /* ── Authenticated shell with routes ── */
 function AppShell() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isMobile } = useWindowSize();
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-secondary)' }}>
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <TopBar />
-        <main style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
+        <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <main style={{ 
+          flex: 1, 
+          padding: isMobile ? '1rem' : '1.5rem',
+          overflowY: 'auto' 
+        }}>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -36,6 +46,7 @@ function AppShell() {
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/sales" element={<SalesPage />} />
+            <Route path="/sales/new" element={<SalesCreatePage />} />
             <Route path="/sales/:id" element={<SalesDetailPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/roles" element={<RolesPage />} />

@@ -67,15 +67,15 @@ model BikeModel {
 model Bike {
   id String @id @default(uuid())
 
-  engineNumber  String @unique
-  chassisNumber String @unique
+  engineNumber  String? @unique
+  chassisNumber String? @unique
   modelId       String
   color         String
 
   status BikeStatus @default(AVAILABLE)
 
-  manufactureYear    Int
-  manufactureMonth   Months
+  manufactureYear    Int?
+  manufactureMonth   Months?
   registrationNumber String? @unique
 
   purchasePrice Float? // cost to showroom
@@ -85,8 +85,14 @@ model Bike {
 
   model BikeModel @relation(fields: [modelId], references: [id])
 
+
+
+
   // deleted flag for soft deletes
   isDeleted Boolean @default(false)
+
+  // stockType
+  stockType StockType @default(IN_STOCK)
 
   // supply chain relationships
   supplierId String?
@@ -367,4 +373,10 @@ enum paymentMethod {
   CHEQUE
   NET_BANKING
   OTHER
+}
+
+
+enum StockType {
+  IN_STOCK
+  PRE_ORDER
 }

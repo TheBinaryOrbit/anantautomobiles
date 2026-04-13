@@ -1,11 +1,25 @@
 import { X } from 'lucide-react';
-import { STATUS_COLORS } from '../../utils/constants';
+import { STATUS_COLORS, STOCK_TYPE } from '../../utils/constants';
 
 /* ──────────────────────────────────────────────
    Badge
 ────────────────────────────────────────────── */
 export function Badge({ label }) {
   const c = STATUS_COLORS[label] || { bg: '#F1EFE8', fg: '#444441' };
+  return (
+    <span style={{
+      background: c.bg, color: c.fg,
+      fontSize: 11, fontWeight: 500,
+      padding: '3px 10px', borderRadius: 20,
+      display: 'inline-block', whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </span>
+  );
+}
+
+export function StockBadge({ label }) {
+  const c = STOCK_TYPE[label] || { bg: '#F1EFE8', fg: '#444441' };
   return (
     <span style={{
       background: c.bg, color: c.fg,
@@ -120,7 +134,7 @@ export function Select({ children, style, ...props }) {
 /* ──────────────────────────────────────────────
    Field
 ────────────────────────────────────────────── */
-export function Field({ label, children, style }) {
+export function Field({ label, children, style, error, fullWidth }) {
   return (
     <div style={{ marginBottom: 14, ...style }}>
       {label && (
@@ -129,6 +143,9 @@ export function Field({ label, children, style }) {
         </label>
       )}
       {children}
+      {error && (
+        <div style={{ fontSize: 11, color: '#E24B4A', marginTop: 4 }}>{error}</div>
+      )}
     </div>
   );
 }
@@ -142,14 +159,14 @@ export function Modal({ title, onClose, children, width = 600 }) {
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{ background: 'var(--bg-primary)', borderRadius: 16, border: '0.5px solid var(--border-primary)', width: `min(${width}px, 100%)`, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '0.5px solid var(--border-secondary)', flexShrink: 0 }}>
+      <div style={{ background: 'var(--bg-primary)', borderRadius: 16, border: '0.5px solid var(--border-primary)', width: `min(${width}px, calc(100% - 2rem))`, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(1rem, 2vw, 1.5rem)', borderBottom: '0.5px solid var(--border-secondary)', flexShrink: 0 }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{title}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 4, borderRadius: 6 }}>
             <X size={16} />
           </button>
         </div>
-        <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto' }}>
+        <div style={{ padding: 'clamp(1rem, 2vw, 1.5rem)', overflowY: 'auto' }}>
           {children}
         </div>
       </div>
@@ -311,5 +328,20 @@ export function ConfirmDialog({ message, onConfirm, onCancel }) {
         <Button variant="danger" onClick={onConfirm}>Delete</Button>
       </div>
     </Modal>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   FormGrid (Responsive form layout)
+────────────────────────────────────────────── */
+export function FormGrid({ children, cols = 2 }) {
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(auto-fit, minmax(250px, 1fr))`,
+      gap: 12,
+    }}>
+      {children}
+    </div>
   );
 }

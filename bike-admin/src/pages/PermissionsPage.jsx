@@ -3,7 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { permissionsApi } from '../api/services';
 import {
-  PageHeader, SearchBar, Table, Modal,
+  PageHeader, SearchBar, Table, Modal, FormGrid,
   Field, Input, Select, Button, Card, ConfirmDialog,
 } from '../components/ui';
 
@@ -86,12 +86,12 @@ export default function PermissionsPage() {
 
       {modal && (
         <Modal title={modal.title} onClose={() => setModal(null)} width={480}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormGrid>
             <Field label="Permission Key *"><Input value={form.key || ''} onChange={e => set('key', e.target.value)} placeholder="e.g. bikes.create" /></Field>
             <Field label="Module *"><Input value={form.module || ''} onChange={e => set('module', e.target.value)} placeholder="e.g. BIKES" /></Field>
             <Field label="Action *"><Input value={form.action || ''} onChange={e => set('action', e.target.value)} placeholder="e.g. CREATE" /></Field>
             <Field label="Description"><Input value={form.description || ''} onChange={e => set('description', e.target.value)} /></Field>
-          </div>
+          </FormGrid>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
             <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>
             <Button onClick={save} disabled={loading}>{loading ? 'Saving…' : 'Save'}</Button>

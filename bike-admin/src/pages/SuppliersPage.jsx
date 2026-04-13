@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { suppliersApi } from '../api/services';
 import { SUPPLIER_TYPES } from '../utils/constants';
 import {
-  PageHeader, SearchBar, Table, Badge, Modal,
+  PageHeader, SearchBar, Table, Badge, Modal, FormGrid,
   Field, Input, Select, Button, Card, ConfirmDialog,
 } from '../components/ui';
 
@@ -84,7 +84,7 @@ export default function SuppliersPage() {
 
       {modal && (
         <Modal title={modal.title} onClose={() => setModal(null)}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormGrid>
             <Field label="Contact Name"><Input value={form.name || ''} onChange={e => set('name', e.target.value)} /></Field>
             <Field label="Company Name"><Input value={form.companyName || ''} onChange={e => set('companyName', e.target.value)} /></Field>
             <Field label="Email"><Input type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} /></Field>
@@ -97,15 +97,15 @@ export default function SuppliersPage() {
 
             <div style={{ gridColumn: '1/-1', borderTop: '0.5px solid var(--border-secondary)', paddingTop: 12, marginTop: 4 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Address</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <FormGrid>
                 <Field label="Address Line 1" style={{ gridColumn: '1/-1' }}><Input value={form.addressLine1 || ''} onChange={e => set('addressLine1', e.target.value)} /></Field>
                 <Field label="City"><Input value={form.city || ''} onChange={e => set('city', e.target.value)} /></Field>
                 <Field label="State"><Input value={form.state || ''} onChange={e => set('state', e.target.value)} /></Field>
                 <Field label="Postal Code"><Input value={form.postalCode || ''} onChange={e => set('postalCode', e.target.value)} /></Field>
                 <Field label="Country"><Input value={form.country || ''} onChange={e => set('country', e.target.value)} /></Field>
-              </div>
+              </FormGrid>
             </div>
-          </div>
+          </FormGrid>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
             <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>
             <Button onClick={save} disabled={loading}>{loading ? 'Saving…' : 'Save'}</Button>

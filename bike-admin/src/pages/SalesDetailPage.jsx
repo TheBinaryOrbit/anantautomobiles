@@ -76,7 +76,7 @@ export default function SalesDetailPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `invoice-${sale.id}.pdf`;
+      a.download = `invoice-${sale.saleNumber || sale.id}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -203,8 +203,8 @@ export default function SalesDetailPage() {
       {/* Sale Info Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 12, marginBottom: 24 }}>
         <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 16, border: '0.5px solid var(--border-secondary)' }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sale ID</p>
-          <p style={{ fontSize: 15, fontWeight: 600 }}>{sale.id?.slice(0, 12)}…</p>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sale No.</p>
+          <p style={{ fontSize: 15, fontWeight: 600 }}>{sale.saleNumber || sale.id?.slice(0, 12)}…</p>
         </div>
         <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 16, border: '0.5px solid var(--border-secondary)' }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sale Date</p>
@@ -382,7 +382,7 @@ export default function SalesDetailPage() {
 
       {/* Invoice Modal */}
       {invoiceModal && (
-        <Modal title={`Invoice Preview - ${sale.id?.slice(0, 8)}…`} onClose={() => setInvoiceModal(false)} width={700}>
+        <Modal title={`Invoice Preview - ${sale.saleNumber || sale.id?.slice(0, 8)}…`} onClose={() => setInvoiceModal(false)} width={700}>
           <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, overflow: 'hidden', marginBottom: 20 }}>
             <iframe
               src={`${STATIC_BASE}/${sale.invoiceUrl}`}
