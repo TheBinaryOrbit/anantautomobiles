@@ -1,7 +1,24 @@
+const crypto = require('crypto');
 const prisma = require('../config/db');
 const invoiceService = require('./invoiceService');
 
 class SalesService {
+  async generateSaleNumber() {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const candidate = String(crypto.randomInt(1000000000, 10000000000));
+      const existingSale = await prisma.sale.findFirst({
+        where: { saleNumber: candidate },
+        select: { id: true },
+      });
+
+      if (!existingSale) {
+        return candidate;
+      }
+    }
+
+    throw new Error('Unable to generate a unique sale number');
+  }
+
   validateSalesData(data) {
     const errors = [];
 
@@ -183,10 +200,12 @@ class SalesService {
       const pendingAmount = parseFloat(saleData.pendingAmount) || 0;
       const isPaid = pendingAmount === 0;
       const status = pendingAmount === 0 ? 'CONFIRMED' : 'PENDING';
+      const saleNumber = await this.generateSaleNumber();
 
       // Create sale with items
       const sale = await prisma.sale.create({
         data: {
+          saleNumber,
           customerId: saleData.customerId,
           subtotal,
           discountAmount: totalDiscountAmount,

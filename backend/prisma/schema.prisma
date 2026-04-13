@@ -81,7 +81,7 @@ model Bike {
   purchasePrice Float? // cost to showroom
   purchaseDate  DateTime?
 
-  salePrice Float?
+  exShowroomPrice Float?
 
   model BikeModel @relation(fields: [modelId], references: [id])
 
@@ -124,6 +124,7 @@ model accessories {
 
 model Sale {
   id         String   @id @default(uuid())
+  saleNumber String?  @unique
   customerId String
   customer   customer @relation(fields: [customerId], references: [id])
 

@@ -43,8 +43,8 @@ class BikeService {
     //   errors.push({ field: 'registrationNumber', message: 'Registration Number must be a string' });
     // }
 
-    if (!data.salePrice || data.salePrice <= 0) {
-      errors.push({ field: 'salePrice', message: 'Sale Price must be a positive number' });
+    if (!data.exShowroomPrice || data.exShowroomPrice <= 0) {
+      errors.push({ field: 'exShowroomPrice', message: 'Ex-Showroom Price must be a positive number' });
     }
 
     return errors;
@@ -82,7 +82,7 @@ class BikeService {
           purchasePrice: +(data.purchasePrice) || null,
           purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
           supplierId: data.supplierId || null,
-          salePrice: +(data.salePrice) || null,
+          exShowroomPrice: +(data.exShowroomPrice) || null,
         },
         include: { model: true },
       });

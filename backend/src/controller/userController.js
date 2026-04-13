@@ -4,13 +4,13 @@ const { ApiResponse } = require('../utils/apiResponse');
 class UserController {
   async createUser(req, res, next) {
     try {
-      const { email, phone, password, role } = req.body;
+      const { email, phone, password, role , name } = req.body;
 
-      if (!email || !phone || !password) {
-        return ApiResponse.badRequest(res, 'Email, phone, and password are required');
+      if (!email || !phone || !password || !name) {
+        return ApiResponse.badRequest(res, 'Email, phone, password, and name are required');
       }
 
-      const user = await userService.createUser(email, phone, password, role);
+      const user = await userService.createUser(email, phone, password, role , name);
       return ApiResponse.created(res, 'User created successfully', user);
     } catch (error) {
       return ApiResponse.badRequest(res, error.message);

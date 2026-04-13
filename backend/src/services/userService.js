@@ -12,7 +12,7 @@ class UserService {
     return bcrypt.compare(password, hashedPassword);
   }
 
-  async createUser(email, phone, password, role = 'USER') {
+  async createUser(email, phone, password, role = 'USER' , name) {
     try {
       const existingUser = await prisma.user.findFirst({
         where: {
@@ -32,6 +32,7 @@ class UserService {
           phone,
           password: hashedPassword,
           role,
+          name,
         },
       });
 
