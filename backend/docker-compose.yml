@@ -1,40 +1,40 @@
+version: "3.9"
+
 services:
-  # PostgreSQL Database Service
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: anant_automobiles_db
     environment:
-      POSTGRES_USER: ${DB_USER:-anant_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-anant_password_123}
-      POSTGRES_DB: ${DB_NAME:-anantautomobiles}
-      DATABASE_URL: postgresql://${DB_USER:-anant_user}:${DB_PASSWORD:-anant_password_123}@postgres:5432/${DB_NAME:-anantautomobiles}
-      PORT: ${PORT:-3000}
+      POSTGRES_USER: anant_user
+      POSTGRES_PASSWORD: anant_password_123
+      POSTGRES_DB: anantautomobiles
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./prisma/migrations:/docker-entrypoint-initdb.d
     networks:
       - anant_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-anant_user} -d ${DB_NAME:-anantautomobiles}"]
+      test: ["CMD-SHELL", "pg_isready -U anant_user -d anantautomobiles"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
 
-  # Node.js Backend Service
+  # Backend Service
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: anant_automobiles_backend
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-3000}
-      DATABASE_URL: postgresql://${DB_USER:-anant_user}:${DB_PASSWORD:-anant_password_123}@postgres:5432/${DB_NAME:-anantautomobiles}
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://anant_user:anant_password_123@postgres:5432/anantautomobiles
     ports:
-      - "${PORT:-3000}:3000"
+      - "3000:3000"
     volumes:
       - ./uploads:/app/uploads
       - ./public:/app/public
@@ -44,11 +44,10 @@ services:
     networks:
       - anant_network
     restart: unless-stopped
-    command: sh -c "npm run prisma:generate && npm run migrate:deploy && npm start"
+    command: sh -c "sleep 5 && npx prisma generate && npx prisma migrate deploy && npm start"
 
 volumes:
   postgres_data:
-    driver: local
 
 networks:
   anant_network:
