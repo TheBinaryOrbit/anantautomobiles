@@ -54,7 +54,7 @@ const permissions = [
 
     // setting
     { module: 'role', action: 'manage', description: 'Manage roles and permissions' },
-    
+
 
 ];
 
@@ -202,7 +202,11 @@ async function seedData() {
         console.log('\n👤 Setting up admin user...');
         const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
         const hashedPassword = await bcrypt.hash('Admin@123', 10); // Use a secure password in production
-        
+
+        // clear all the  users with email
+        await prisma.user.deleteMany({
+            where: {}
+        });
 
         const adminUser = await prisma.user.upsert({
             where: { email: 'admin@test.com' },
