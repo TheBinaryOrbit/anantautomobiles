@@ -1,5 +1,5 @@
 const prisma = require('../src/config/db.js');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Define all permissions by module and action
 const permissions = [
