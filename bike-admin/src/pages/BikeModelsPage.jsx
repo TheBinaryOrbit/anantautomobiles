@@ -97,7 +97,7 @@ export default function BikeModelsPage() {
             <Field label="Brand *"><Input value={form.brand || ''} onChange={e => set('brand', e.target.value)} /></Field>
             <Field label="Category *"><Input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="e.g. Commuter, Sports" /></Field>
             <Field label="Fuel Type"><Input value={form.fuelType || ''} onChange={e => set('fuelType', e.target.value)} /></Field>
-            <Field label="Description" style={{ gridColumn: '1/-1' }}>
+            <Field label="Description *" style={{ gridColumn: '1/-1' }}>
               <Textarea value={form.description || ''} onChange={e => set('description', e.target.value)} rows={2} />
             </Field>
             <Field label="Image" style={{ gridColumn: '1/-1' }}>

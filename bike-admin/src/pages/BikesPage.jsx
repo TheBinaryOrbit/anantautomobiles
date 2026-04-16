@@ -9,7 +9,7 @@ import {
   Field, Input, Select, Button, Card, StatCard, ConfirmDialog, StockBadge 
 } from '../components/ui';
 
-const EMPTY = { status: 'AVAILABLE', stockType: 'IN_STOCK', manufactureMonth: 'JANUARY' };
+const EMPTY = { status: 'AVAILABLE', stockType: 'IN_STOCK', manufactureMonth: '' };
 
 export default function BikesPage() {
   const navigate = useNavigate();
@@ -277,6 +277,7 @@ export default function BikesPage() {
                 <Field label="Manufacture Year *"><Input type="number" value={form.manufactureYear || ''} onChange={e => set('manufactureYear', e.target.value)} readOnly /></Field>
                 <Field label="Manufacture Month *">
                   <Select value={form.manufactureMonth || ''} onChange={e => set('manufactureMonth', e.target.value)}>
+                    <option value="">Select month</option>
                     {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                   </Select>
                 </Field>
