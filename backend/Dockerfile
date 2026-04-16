@@ -1,4 +1,4 @@
-# Build stage
+# ---------- Build Stage ----------
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -6,46 +6,49 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install all dependencies (including dev)
 RUN npm ci
 
-# Copy Prisma files
+# Copy prisma schema
 COPY prisma ./prisma
 
-# Generate Prisma client
-RUN npm run prisma:generate
+# Generate Prisma Client
+RUN npx prisma generate
 
-# Production stage
+# ---------- Production Stage ----------
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
+# Install dumb-init (for proper signal handling)
 RUN apk add --no-cache dumb-init
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
+# Install only production deps
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy Prisma files from builder
+# Copy Prisma client + engines
 COPY --from=builder /app/node_modules/.prisma /app/node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma /app/node_modules/@prisma
+
+# Copy prisma schema (needed for migrations)
 COPY prisma ./prisma
 
-# Copy application files
+# Copy app code
 COPY src ./src
 COPY public ./public
 COPY index.js .
 
-# Create uploads directory
+# Create uploads dir
 RUN mkdir -p uploads/invoices
 
 # Expose port
 EXPOSE 3000
 
-# Use dumb-init to handle signals properly
+# Use dumb-init
 ENTRYPOINT ["dumb-init", "--"]
 
-# Default command
-CMD ["node", "index.js"]
+# 🔥 IMPORTANT: run migrations before starting app
+CMD ["sh", "-c", "npx prisma migrate deploy && node index.js"]
