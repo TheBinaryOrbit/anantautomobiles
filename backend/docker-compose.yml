@@ -42,7 +42,7 @@ services:
     networks:
       - anant_network
     restart: unless-stopped
-    command: sh -c "npm run prisma:generate && npm run migrate:deploy && npm start"
+    command: sh -c "npm run prisma:generate && npm run migrate && npm start"
 
 volumes:
   postgres_data:
