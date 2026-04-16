@@ -1,4 +1,5 @@
 const prisma = require('../src/config/db.js');
+const bcrypt = require('bcrypt');
 
 // Define all permissions by module and action
 const permissions = [
@@ -200,6 +201,8 @@ async function seedData() {
         // 3. Create or update admin user with ADMIN role
         console.log('\n👤 Setting up admin user...');
         const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+        const hashedPassword = await bcrypt.hash('Admin@123', 10); // Use a secure password in production
+        
 
         const adminUser = await prisma.user.upsert({
             where: { email: 'admin@test.com' },
@@ -209,7 +212,7 @@ async function seedData() {
             },
             create: {
                 email: 'admin@test.com',
-                password: 'hashed_password_here', // In production, this should be hashed
+                password: hashedPassword,
                 name: 'Admin User',
                 phone: '9000000001',
                 role: 'ADMIN',
@@ -272,7 +275,7 @@ async function seedData() {
                 },
                 create: {
                     email: userData.email,
-                    password: 'hashed_password_here', // In production, this should be hashed
+                    password: hashedPassword, // In production, this should be hashed
                     name: userData.name,
                     phone: userData.phone,
                     role: userData.role,
