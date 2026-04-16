@@ -1,4 +1,5 @@
 services:
+  # PostgreSQL Database Service
   postgres:
     image: postgres:16-alpine
     container_name: anant_automobiles_db
@@ -6,10 +7,13 @@ services:
       POSTGRES_USER: ${DB_USER:-anant_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-anant_password_123}
       POSTGRES_DB: ${DB_NAME:-anantautomobiles}
+      DATABASE_URL: postgresql://${DB_USER:-anant_user}:${DB_PASSWORD:-anant_password_123}@postgres:5432/${DB_NAME:-anantautomobiles}
+      PORT: ${PORT:-3000}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./prisma/migrations:/docker-entrypoint-initdb.d
     networks:
       - anant_network
     healthcheck:
@@ -19,6 +23,7 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Node.js Backend Service
   backend:
     build:
       context: .
@@ -27,6 +32,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
+      DATABASE_URL: postgresql://${DB_USER:-anant_user}:${DB_PASSWORD:-anant_password_123}@postgres:5432/${DB_NAME:-anantautomobiles}
     ports:
       - "${PORT:-3000}:3000"
     volumes:
@@ -38,7 +44,7 @@ services:
     networks:
       - anant_network
     restart: unless-stopped
-    command: sh -c "npm run prisma:generate && npm run migrate && npm start"
+    command: sh -c "npm run prisma:generate && npm run migrate:deploy && npm start"
 
 volumes:
   postgres_data:
