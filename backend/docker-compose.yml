@@ -32,9 +32,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:        # ✅ nested under build
+        DATABASE_URL: ${DATABASE_URL}
     container_name: anant_backend
-    args:
-      DATABASE_URL: ${DATABASE_URL}
     env_file:
       - .env
     environment:
