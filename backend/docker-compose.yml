@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL
   postgres:
     image: postgres:16-alpine
     container_name: anant_automobiles_db
@@ -13,7 +13,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./prisma/migrations:/docker-entrypoint-initdb.d
     networks:
       - anant_network
     healthcheck:
@@ -23,28 +22,30 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Backend Service
+  # Backend
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: anant_automobiles_backend
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: postgresql://anant_user:anant_password_123@postgres:5432/anantautomobiles
+
+    # 🔥 THIS FIXES YOUR ORIGINAL ERROR
+    env_file:
+      - .env
+
     ports:
       - "3000:3000"
+
     volumes:
       - ./uploads:/app/uploads
       - ./public:/app/public
+
     depends_on:
       postgres:
         condition: service_healthy
+
     networks:
       - anant_network
+
     restart: unless-stopped
-    command: sh -c "sleep 5 && npx prisma generate && npx prisma migrate deploy && npm start"
 
 volumes:
   postgres_data:
