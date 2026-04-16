@@ -38,6 +38,7 @@ COPY prisma ./prisma
 
 # Copy app code
 COPY src ./src
+COPY src ./tests
 COPY public ./public
 COPY index.js .
 
