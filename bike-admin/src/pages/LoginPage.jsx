@@ -33,7 +33,7 @@ export default function LoginPage() {
       <div style={{ background: 'var(--bg-primary)', border: '0.5px solid var(--border-primary)', borderRadius: 18, padding: '2.5rem', width: 380, boxShadow: 'var(--shadow-lg)' }}>
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '2rem' }}>
-          <div style={{ width: 42, height: 42, background: '#534AB7', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 42, height: 42, background: '#EE2326', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bike size={20} color="#fff" />
           </div>
           <div>

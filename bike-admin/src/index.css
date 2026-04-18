@@ -24,9 +24,9 @@
   --border-secondary: rgba(26,25,23,0.08);
 
   /* Brand */
-  --brand:        #534AB7;
-  --brand-light:  #EEEDFE;
-  --brand-dark:   #3C3489;
+  --brand:        #EE2326;
+  --brand-light:  #FFE8E8;
+  --brand-dark:   #B00019;
 
   /* Status */
   --success-bg:  #EAF3DE; --success-fg:  #27500A;

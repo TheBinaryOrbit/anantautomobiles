@@ -46,7 +46,7 @@ export function Button({ children, variant = 'primary', size = 'md', ...props })
     padding: size === 'sm' ? '5px 12px' : size === 'lg' ? '11px 22px' : '8px 18px',
   };
   const variants = {
-    primary:   { background: '#534AB7', color: '#fff' },
+    primary:   { background: '#EE2326', color: '#fff' },
     danger:    { background: '#E24B4A', color: '#fff' },
     secondary: { background: 'var(--bg-tertiary)', color: 'var(--text-primary)' },
     ghost:     { background: 'transparent', color: 'var(--text-secondary)', border: '0.5px solid var(--border-primary)' },
@@ -80,7 +80,7 @@ export function Input({ style, ...props }) {
         boxSizing: 'border-box',
         ...style,
       }}
-      onFocus={e => { e.target.style.borderColor = '#534AB7'; }}
+      onFocus={e => { e.target.style.borderColor = '#EE2326'; }}
       onBlur={e => { e.target.style.borderColor = 'var(--border-primary)'; }}
     />
   );
@@ -103,7 +103,7 @@ export function Textarea({ style, ...props }) {
         boxSizing: 'border-box',
         ...style,
       }}
-      onFocus={e => { e.target.style.borderColor = '#534AB7'; }}
+      onFocus={e => { e.target.style.borderColor = '#EE2326'; }}
       onBlur={e => { e.target.style.borderColor = 'var(--border-primary)'; }}
     />
   );
@@ -267,7 +267,7 @@ export function SearchBar({ value, onChange, placeholder, children }) {
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder || 'Search...'}
         style={{ flex: 1, minWidth: 180, padding: '8px 14px', borderRadius: 8, border: '0.5px solid var(--border-primary)', background: 'var(--bg-secondary)', fontSize: 13, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', outline: 'none' }}
-        onFocus={e => { e.target.style.borderColor = '#534AB7'; }}
+        onFocus={e => { e.target.style.borderColor = '#EE2326'; }}
         onBlur={e => { e.target.style.borderColor = 'var(--border-primary)'; }}
       />
       {children}
