@@ -114,7 +114,7 @@ export default function Footer() {
               <p>123 Bike Street, Civil Lines</p>
               <p>Gorakhpur, Uttar Pradesh 273001</p>
               <p style={{ marginTop: '0.5rem' }}>
-                <a href="tel:+919876543210" style={styles.link}>+91 98765 43210</a>
+                <a href="tel:+919876543210" style={styles.link}>+91 8650507571</a>
               </p>
               <p>
                 <a href="mailto:info@ankitbikes.com" style={styles.link}>info@anant-Automobiles.com</a>

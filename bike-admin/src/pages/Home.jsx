@@ -7,6 +7,7 @@ import WhyChooseUs from '../components/sections/WhyChooseUs';
 import Reviews from '../components/sections/Reviews';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
+import CircularGallery from '../components/ui/CircularGallery';
 
 export default function Home() {
   return (
@@ -41,6 +42,7 @@ export default function Home() {
           <WhyChooseUs />
           <OurDealBrands />
           <Reviews />
+          {/* <CircularGallery/> */}
         </main>
         <Footer />
       </div>

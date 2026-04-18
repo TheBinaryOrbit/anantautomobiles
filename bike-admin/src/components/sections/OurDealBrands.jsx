@@ -1,19 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
 
-const brands = [
-  { id: 1,  name: 'Hero MotoCorp', abbr: 'HERO',     logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Hero_MotoCorp_Logo.svg' },
-  { id: 2,  name: 'Honda',         abbr: 'HONDA',    logo: 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg' },
-  { id: 3,  name: 'Bajaj Auto',    abbr: 'BAJAJ',    logo: 'https://images.seeklogo.com/logo-png/32/1/bajaj-logo-png_seeklogo-320908.png' },
-  { id: 4,  name: 'TVS Motor',     abbr: 'TVS',      logo: 'https://1000logos.net/wp-content/uploads/2020/07/TVS-Motor-Logo.jpg' },
-  { id: 5,  name: 'Royal Enfield', abbr: 'RE',       logo: 'https://upload.wikimedia.org/wikipedia/commons/f/fd/Royal_Enfield_logo_new.svg' },
-  { id: 6,  name: 'Yamaha',        abbr: 'YAMAHA',   logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTXfDEW1HslQ8uBLsoKZ1wY3h7IP1dLCL64ng&s' },
-  { id: 7,  name: 'Suzuki',        abbr: 'SUZUKI',   logo: 'https://thumbs.dreamstime.com/b/suzuki-company-logo-motor-corporation-japanese-multinational-headquartered-minami-ku-hamamatsu-manufactures-automobiles-140090091.jpg' }
+const bikes = [
+  {
+    id: 1,
+    name: 'Splendor Plus',
+    price: '₹75,000*',
+    img: 'https://mrgmotors.com/wp-content/uploads/2022/01/splendor-plus-ibs-i3s-21-removebg-preview.png'
+  },
+  {
+    id: 2,
+    name: 'HF Deluxe',
+    price: '₹60,000*',
+    img: 'https://imgd.aeplcdn.com/370x208/n/cw/ec/212719/hf-deluxe-right-side-view-2.png?isig=0&q=100'
+  },
+  {
+    id: 3,
+    name: 'Xtreme 125R',
+    price: '₹95,000*',
+    img: 'https://www.heromotocorp.com/content/dam/hero-commerce/in/en/products/performance/xtreme-125r/HXTRSASSCFIBPR/360/2.png'
+  },
+  {
+    id: 4,
+    name: 'Glamour',
+    price: '₹85,000*',
+    img: 'https://bikebazardelhi.com/uploads/vehicle/4545-removebg-preview.png'
+  }
 ];
 
 export default function OurDealBikes() {
   const sectionRef = useRef(null);
   const [visible, setVisible] = useState(false);
-  const [imgErrors, setImgErrors] = useState({});
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -29,55 +45,71 @@ export default function OurDealBikes() {
     return () => obs.disconnect();
   }, []);
 
-  const Card = ({ brand, delay }) => {
-    const err = imgErrors[brand.id];
+  const Card = ({ bike, delay }) => {
     return (
       <div
         style={{
-          width: 160,
-          height: 120,
+          width: 240,
           background: '#fff',
           borderRadius: 16,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
+          padding: 16,
+          textAlign: 'center',
           boxShadow: '0 6px 16px rgba(0,0,0,0.25)',
           opacity: visible ? 1 : 0,
           transform: visible ? 'translateY(0)' : 'translateY(30px)',
           transition: `all 0.7s ease ${delay}ms`,
+          cursor: 'pointer'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-8px) scale(1.04)';
-          e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,255,255,0.08)';
+          e.currentTarget.style.transform = 'translateY(-10px) scale(1.04)';
+          e.currentTarget.style.boxShadow =
+            '0 12px 32px rgba(0,0,0,0.4)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = 'translateY(0) scale(1)';
-          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.25)';
+          e.currentTarget.style.boxShadow =
+            '0 6px 16px rgba(0,0,0,0.25)';
         }}
       >
-        {!err ? (
-          <img
-            src={brand.logo}
-            alt={brand.name}
-            onError={() => setImgErrors((p) => ({ ...p, [brand.id]: true }))}
-            style={{ width: 110, height: 80, objectFit: 'contain' }}
-          />
-        ) : (
-          <span
-            style={{
-              fontFamily: 'sans-serif',
-              fontSize: 20,
-              fontWeight: 900,
-              color: '#111',
-              letterSpacing: '-0.01em',
-              textAlign: 'center',
-              padding: '0 10px',
-            }}
-          >
-            {brand.abbr}
-          </span>
-        )}
+        <img
+          src={bike.img}
+          alt={bike.name}
+          style={{
+            width: '100%',
+            height: 130,
+            objectFit: 'contain'
+          }}
+        />
+
+        <h3 style={{ margin: '12px 0 6px', color: '#111' }}>
+          {bike.name}
+        </h3>
+
+        <p
+          style={{
+            margin: 0,
+            fontWeight: 'bold',
+            color: '#e11d48',
+            fontSize: 16
+          }}
+        >
+          {bike.price}
+        </p>
+
+        <button
+          style={{
+            marginTop: 12,
+            padding: '10px 14px',
+            borderRadius: 8,
+            border: 'none',
+            background: '#e11d48',
+            color: '#fff',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          Book Test Ride
+        </button>
       </div>
     );
   };
@@ -85,19 +117,18 @@ export default function OurDealBikes() {
   return (
     <section
       style={{
-        // background: 'linear-gradient(135deg, #0f0f17 0%, #14141f 50%, #0a0a12 100%)',
         backgroundImage: 'url(/images/bg1.jpg)',
         padding: '80px 5vw',
         position: 'relative',
         overflow: 'hidden',
-        color: '#ffffff',
+        color: '#ffffff'
       }}
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;700;800&display=swap');
       `}</style>
 
-      {/* Subtle dot + noise overlay */}
+      {/* Background overlay */}
       <div
         style={{
           position: 'absolute',
@@ -108,37 +139,48 @@ export default function OurDealBikes() {
           `,
           backgroundSize: '24px 24px, 200px 200px',
           pointerEvents: 'none',
-          mixBlendMode: 'screen',
+          mixBlendMode: 'screen'
         }}
       />
 
       {/* Header */}
-      <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: 60 }}>
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          textAlign: 'center',
+          marginBottom: 60
+        }}
+      >
         <div
           style={{
             width: 180,
             height: 3,
-            background: 'linear-gradient(to right, transparent, #ffffff88, transparent)',
-            margin: '0 auto 28px',
+            background:
+              'linear-gradient(to right, transparent, #ffffff88, transparent)',
+            margin: '0 auto 28px'
           }}
         />
+
         <h2
           style={{
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 'clamp(36px, 6vw, 52px)',
             fontWeight: 900,
-            color: '#ffffff',
             margin: 0,
             letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            textShadow: '0 2px 10px rgba(0,0,0,0.6)',
+            textTransform: 'uppercase'
           }}
         >
-          Brands We Deal In
+          Explore Hero Bikes
         </h2>
+
+        <p style={{ opacity: 0.7, marginTop: 10 }}>
+          Authorized Hero MotoCorp Dealer
+        </p>
       </div>
 
-      {/* Brands grid */}
+      {/* Bikes Grid */}
       <div
         ref={sectionRef}
         style={{
@@ -148,12 +190,12 @@ export default function OurDealBikes() {
           flexWrap: 'wrap',
           justifyContent: 'center',
           gap: 32,
-          maxWidth: '1600px',
-          margin: '0 auto',
+          maxWidth: '1400px',
+          margin: '0 auto'
         }}
       >
-        {brands.map((brand, i) => (
-          <Card key={brand.id} brand={brand} delay={i * 60} />
+        {bikes.map((bike, i) => (
+          <Card key={bike.id} bike={bike} delay={i * 80} />
         ))}
       </div>
     </section>
