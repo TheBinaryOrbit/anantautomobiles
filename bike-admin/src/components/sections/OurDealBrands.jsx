@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const bikes = [
   {
@@ -30,6 +31,7 @@ const bikes = [
 export default function OurDealBikes() {
   const sectionRef = useRef(null);
   const [visible, setVisible] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -97,6 +99,13 @@ export default function OurDealBikes() {
         </p>
 
         <button
+          onClick={() => {
+            navigate('/', { replace: false });
+            setTimeout(() => {
+              const element = document.getElementById('book-your-dream-bike');
+              if (element) element.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          }}
           style={{
             marginTop: 12,
             padding: '10px 14px',

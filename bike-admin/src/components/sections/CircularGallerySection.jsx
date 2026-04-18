@@ -1,6 +1,6 @@
 import CircularGallery from './../ui/CircularGallery'
 
-<div style={{ height: '600px', position: 'relative' }}>
+<div style={{ height: '1800px', position: 'relative' }}>
   <CircularGallery 
     bend={3} 
     textColor="#ffffff" 

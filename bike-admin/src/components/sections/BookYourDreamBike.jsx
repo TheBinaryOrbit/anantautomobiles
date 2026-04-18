@@ -179,7 +179,8 @@ const BookYourDreamBike = () => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: isMobile ? '0' : '40px 5vw',
-      }}>
+      }}
+      id="book-your-dream-bike">
         <div style={{
           position: 'absolute', inset: 0,
           background: 'linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.72))',

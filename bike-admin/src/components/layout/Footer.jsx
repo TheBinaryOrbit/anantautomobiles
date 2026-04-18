@@ -91,7 +91,7 @@ export default function Footer() {
               Ananant <span style={styles.accent}>Automobiles</span>
             </h3>
             <p style={styles.textMuted}>
-              Authorized Dealer for Hero, Honda, Bajaj, TVS & more.<br />
+              Authorized Dealer for Hero Bikes.<br />
               Best offers • Fast finance • Genuine service.
             </p>
           </div>
@@ -111,10 +111,10 @@ export default function Footer() {
           <div>
             <h4 style={styles.sectionHeading}>Contact</h4>
             <address style={styles.address}>
-              <p>123 Bike Street, Civil Lines</p>
-              <p>Gorakhpur, Uttar Pradesh 273001</p>
+              <p>64Q4+M42 Front of Indian Petrol Pump,</p>
+              <p>Ahmadgarh, Uttar Pradesh 203392</p>
               <p style={{ marginTop: '0.5rem' }}>
-                <a href="tel:+919876543210" style={styles.link}>+91 8650507571</a>
+                <a href="tel:+919876543210" style={styles.link}>+91 8650442200</a>
               </p>
               <p>
                 <a href="mailto:info@ankitbikes.com" style={styles.link}>info@anant-Automobiles.com</a>
@@ -129,7 +129,7 @@ export default function Footer() {
             {/* Google Maps Embed */}
             <div style={styles.mapWrap}>
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3598.123456789012!2d83.373289315013!3d26.760554983198!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3991440a00000001%3A0x1234567890abcdef!2sGorakhpur%2C%20Uttar%20Pradesh!5e0!3m2!1sen!2sin!4v1698765432100!5m2!1sen!2sin"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3514.9515929535423!2d78.1052799!3d28.2391489!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390b53b7cdd781cd%3A0x4172937f4b27d8e7!2sHero%20-%20Anant%20Automobiles!5e0!3m2!1sen!2sin!4v1776542149871!5m2!1sen!2sin"
                 style={styles.iframe}
                 allowFullScreen=""
                 loading="lazy"

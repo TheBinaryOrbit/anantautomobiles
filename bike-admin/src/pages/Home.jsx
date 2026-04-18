@@ -7,7 +7,7 @@ import WhyChooseUs from '../components/sections/WhyChooseUs';
 import Reviews from '../components/sections/Reviews';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
-import CircularGallery from '../components/ui/CircularGallery';
+import Gallery from '../components/Gallery';
 
 export default function Home() {
   return (
@@ -38,11 +38,11 @@ export default function Home() {
         <Header />
         <main style={{ flexGrow: 1 }}>
           <Hero />
-          <BookYourDreamBike />
-          <WhyChooseUs />
           <OurDealBrands />
+          <WhyChooseUs />
+          <BookYourDreamBike />
           <Reviews />
-          {/* <CircularGallery/> */}
+          <Gallery showExplore={true} showHeader={true} />
         </main>
         <Footer />
       </div>
