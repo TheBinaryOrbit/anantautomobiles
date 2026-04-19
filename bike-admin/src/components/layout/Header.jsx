@@ -231,8 +231,10 @@ export default function Header() {
 
   const navItems = [
     { name: 'Home', path: '/' },
-    { name: 'Buy Bike', path: '/bikes' },
-    { name: 'Brands', path: '/brands' },
+    { name: 'Buy Bike', path: '/public-bikes' },
+    { name: 'Services', path: '/services' },
+    { name: 'Blogs', path: '/blogs' },
+    { name: 'Offers', path: '/offers' },
   ];
 
   const authAction = isAuthenticated

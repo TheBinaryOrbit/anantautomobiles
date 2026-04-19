@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const heroSlides = [
   {
@@ -42,6 +43,7 @@ const DURATION = 5000;
 const TRANSITION_MS = 800;
 
 export default function Hero() {
+  const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
   const [textVisible, setTextVisible] = useState(true);
   const [tab, setTab] = useState('new');
@@ -355,12 +357,12 @@ export default function Hero() {
           padding: '14px 12px 0',
         }}>
           {[
-            { label: 'New Bikes', sub: 'with Exciting Offers', bg: '#fff', color: '#111', icon: '' },
-            { label: 'Services',  sub: 'with Exciting Offers', bg: '#111', color: '#fff', icon: '⚙️' },
-            { label: 'Blogs',     sub: 'with Exciting Offers', bg: '#111', color: '#fff', icon: '' },
-            { label: 'Offers',    sub: 'with Exciting Offers', bg: '#fff', color: '#111', icon: '' },
+            { label: 'New Bikes', sub: 'with Exciting Offers', bg: '#fff', color: '#111', icon: '', route: '/public-bikes' },
+            { label: 'Services',  sub: 'with Exciting Offers', bg: '#111', color: '#fff', icon: '⚙️', route: '/services' },
+            { label: 'Blogs',     sub: 'with Exciting Offers', bg: '#111', color: '#fff', icon: '', route: '/blogs' },
+            { label: 'Offers',    sub: 'with Exciting Offers', bg: '#fff', color: '#111', icon: '', route: '/offers' },
           ].map((card, idx) => (
-            <div key={idx} onClick={() => {/* TODO: add route */}} style={{
+            <div key={idx} onClick={() => navigate(card.route)} style={{
               background: card.bg,
               borderRadius: 14,
               padding: '18px 16px',

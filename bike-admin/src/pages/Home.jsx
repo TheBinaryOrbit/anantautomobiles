@@ -41,8 +41,8 @@ export default function Home() {
           <OurDealBrands />
           <WhyChooseUs />
           <BookYourDreamBike />
-          <Reviews />
           <Gallery showExplore={true} showHeader={true} />
+          <Reviews />
         </main>
         <Footer />
       </div>

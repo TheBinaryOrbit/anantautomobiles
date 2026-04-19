@@ -7,7 +7,7 @@ const NAV_SECTIONS = [
     label: 'Main',
     items: [
       { path: '/dashboard',            label: 'Dashboard',   iconName: 'LayoutDashboard' },
-      { path: '/bikes',       label: 'Bikes',       iconName: 'Bike',     badge: '48' },
+      { path: '/admin/bikes',  label: 'Bikes',       iconName: 'Bike',     badge: '48' },
       { path: '/bike-models', label: 'Bike Models', iconName: 'Layers' },
       { path: '/accessories', label: 'Accessories', iconName: 'Wrench' },
     ],

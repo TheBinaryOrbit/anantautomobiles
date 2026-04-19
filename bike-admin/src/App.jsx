@@ -21,6 +21,10 @@ import UsersPage from './pages/UsersPage';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Home from './pages/Home.jsx';
+import PublicBikesPage from './pages/PublicBikesPage.jsx';
+import ServicesPage from './pages/ServicesPage.jsx';
+import BlogsPage from './pages/BlogsPage.jsx';
+import OffersPage from './pages/OffersPage.jsx';
 
 /* ── Authenticated shell layout ── */
 function AppShellLayout() {
@@ -58,6 +62,10 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/home" element={<Home />} />
+      <Route path="/public-bikes" element={<PublicBikesPage />} />
+      <Route path="/services" element={<ServicesPage />} />
+      <Route path="/blogs" element={<BlogsPage />} />
+      <Route path="/offers" element={<OffersPage />} />
 
       <Route
         path="/login"

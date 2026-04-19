@@ -291,37 +291,7 @@ export default function Gallery({ showExplore = true, showHeader = true }) {
         )}
       </div>
 
-      {showExplore && media.length > 0 && (
-        <div style={{ marginTop: '4rem', textAlign: 'center' }}>
-          <Link
-            to="/gallery"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '16px 32px',
-              backgroundColor: '#dc2626',
-              color: 'white',
-              fontWeight: 600,
-              borderRadius: '9999px',
-              textDecoration: 'none',
-              boxShadow: '0 10px 25px rgba(220, 38, 38, 0.3)',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#b91c1c';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#dc2626';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            Explore Full Gallery
-            <ArrowRight size={18} />
-          </Link>
-        </div>
-      )}
+     
 
       {lightboxIndex !== null && <Lightbox />}
     </div>
