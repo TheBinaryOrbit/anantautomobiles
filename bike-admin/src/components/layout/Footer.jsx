@@ -88,7 +88,7 @@ export default function Footer() {
           {/* Brand + description */}
           <div>
             <h3 style={styles.brandHeading}>
-              Ananant <span style={styles.accent}>Automobiles</span>
+              Anant <span style={styles.accent}>Automobiles</span>
             </h3>
             <p style={styles.textMuted}>
               Authorized Dealer for Hero Bikes.<br />
@@ -142,7 +142,7 @@ export default function Footer() {
       </div>
 
       <div style={{ ...styles.wrapper, ...styles.bottom }}>
-        © {new Date().getFullYear()} Ananant Automobiles. All rights reserved.
+        © {new Date().getFullYear()} Anant Automobiles. All rights reserved.
       </div>
     </footer>
   );

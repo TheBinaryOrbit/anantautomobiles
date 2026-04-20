@@ -3,11 +3,17 @@ import React, { useState, useEffect } from 'react';
 const BRANDS = ['Hero', 'Honda', 'Bajaj', 'TVS', 'Royal Enfield', 'Yamaha', 'Suzuki', 'KTM'];
 
 const BookYourDreamBike = () => {
-  const [formData, setFormData] = useState({
-    name: '', email: '', phone: '', brand: '', model: '', city: '',
-  });
-
   const [isMobile, setIsMobile] = useState(false);
+  const [formState, setFormState] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    city: '',
+    brand: '',
+    model: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 860);
@@ -16,155 +22,182 @@ const BookYourDreamBike = () => {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormState(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    alert('Thank you! Our team will get in touch with you soon.');
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      // Prepare form data for Forminit with proper field prefixes
+      const formDataToSend = new FormData();
+      formDataToSend.append('fi-sender-fullName', formState.fullName);
+      formDataToSend.append('fi-sender-email', formState.email);
+      formDataToSend.append('fi-text-phone', formState.phone);
+      formDataToSend.append('fi-text-city', formState.city);
+      formDataToSend.append('fi-text-brand', formState.brand);
+      formDataToSend.append('fi-text-model', formState.model);
+
+      const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      let responseData = {};
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        // If response is not JSON, just check status code
+        responseData = { success: response.ok };
+      }
+
+      if (responseData.success === true || (response.ok && !responseData.error)) {
+        setMessage({
+          type: 'success',
+          text: 'Thank you! Your inquiry has been received. Our team will contact you soon.'
+        });
+        // Reset form
+        setFormState({
+          fullName: '',
+          email: '',
+          phone: '',
+          city: '',
+          brand: '',
+          model: '',
+        });
+      } else {
+        setMessage({
+          type: 'error',
+          text: responseData.message || 'Error submitting form. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Form error:', error);
+      setMessage({
+        type: 'error',
+        text: 'Error submitting form. Please try again later.'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const inputStyle = {
-    width: '100%',
-    padding: '13px 15px',
-    fontSize: '14px',
-    color: '#222',
-    backgroundColor: '#fff',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: '8px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    fontFamily: "'Barlow', sans-serif",
-    transition: 'border-color 0.25s, box-shadow 0.25s',
-  };
-
-  const focusStyle = { borderColor: '#e60000', boxShadow: '0 0 0 3px rgba(230,0,0,0.12)' };
-  const blurStyle  = { borderColor: '#e0e0e0', boxShadow: 'none' };
-
-  const labelStyle = {
-    display: 'block',
-    textAlign: 'left',
-    fontSize: '13px',
-    fontWeight: 700,
-    marginBottom: '7px',
-    fontFamily: "'Barlow', sans-serif",
-    letterSpacing: '0.02em',
-  };
-
-  const FormFields = ({ labelColor = '#fff' }) => (
-    <form onSubmit={handleSubmit} style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '18px 24px',
-      width: '100%',
-      maxWidth: '620px',           // ← prevents form from becoming too wide
-      margin: '0 auto',            // ← centers the form
-    }}>
-      <div>
-        <label style={{ ...labelStyle, color: labelColor }}>Full Name <span style={{ color: '#ff4d4d' }}>*</span></label>
-        <input type="text" name="name" value={formData.name} onChange={handleChange}
-          placeholder="Your name" required style={inputStyle}
-          onFocus={e => Object.assign(e.target.style, focusStyle)}
-          onBlur={e => Object.assign(e.target.style, blurStyle)} />
-      </div>
-
-      <div>
-        <label style={{ ...labelStyle, color: labelColor }}>Phone <span style={{ color: '#ff4d4d' }}>*</span></label>
-        <input type="tel" name="phone" value={formData.phone} onChange={handleChange}
-          placeholder="Phone number" required style={inputStyle}
-          onFocus={e => Object.assign(e.target.style, focusStyle)}
-          onBlur={e => Object.assign(e.target.style, blurStyle)} />
-      </div>
-
-      <div>
-        <label style={{ ...labelStyle, color: labelColor }}>Email <span style={{ color: '#ff4d4d' }}>*</span></label>
-        <input type="email" name="email" value={formData.email} onChange={handleChange}
-          placeholder="Email address" required style={inputStyle}
-          onFocus={e => Object.assign(e.target.style, focusStyle)}
-          onBlur={e => Object.assign(e.target.style, blurStyle)} />
-      </div>
-
-      <div>
-        <label style={{ ...labelStyle, color: labelColor }}>City <span style={{ color: '#ff4d4d' }}>*</span></label>
-        <input type="text" name="city" value={formData.city} onChange={handleChange}
-          placeholder="Lucknow / Kanpur..." required style={inputStyle}
-          onFocus={e => Object.assign(e.target.style, focusStyle)}
-          onBlur={e => Object.assign(e.target.style, blurStyle)} />
-      </div>
-
-      <div>
-        <label style={{ ...labelStyle, color: labelColor }}>Brand <span style={{ color: '#ff4d4d' }}>*</span></label>
-        <select name="brand" value={formData.brand} onChange={handleChange} required
-          style={{ ...inputStyle, color: formData.brand ? '#222' : '#999' }}>
-          <option value="" disabled>Select brand</option>
-          {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-      </div>
-
-      <div>
-        <label style={{ ...labelStyle, color: labelColor }}>Model <span style={{ color: '#ff4d4d' }}>*</span></label>
-        <input type="text" name="model" value={formData.model} onChange={handleChange}
-          placeholder="Classic 350 / Pulsar..." required style={inputStyle}
-          onFocus={e => Object.assign(e.target.style, focusStyle)}
-          onBlur={e => Object.assign(e.target.style, blurStyle)} />
-      </div>
-
-      <div style={{ gridColumn: '1 / -1', marginTop: '12px', textAlign: 'center' }}>
-        <button type="submit" style={{
-          width: '100%',
-          maxWidth: '420px',
-          padding: '15px 40px',
-          fontSize: '15px',
-          fontWeight: 800,
-          letterSpacing: '1.4px',
-          textTransform: 'uppercase',
-          color: '#fff',
-          backgroundColor: '#e60000',
-          border: 'none',
-          borderRadius: '9px',
-          cursor: 'pointer',
-          fontFamily: "'Barlow', sans-serif",
-          transition: 'all 0.22s ease',
-        }}>
-          Enquire Now →
-        </button>
-      </div>
-    </form>
-  );
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700;800&display=swap');
+        
+        * {
+          box-sizing: border-box;
+        }
 
-        button:hover {
-          background-color: #cc0000 !important;
+        .dream-bike-form input,
+        .dream-bike-form select {
+          width: 100%;
+          padding: 13px 15px;
+          font-size: 14px;
+          color: #222;
+          background-color: #fff;
+          border: 1.5px solid #e0e0e0;
+          border-radius: 8px;
+          outline: none;
+          font-family: 'Barlow', sans-serif;
+          transition: all 0.2s ease;
+        }
+
+        .dream-bike-form input:focus,
+        .dream-bike-form select:focus {
+          border-color: #e60000;
+          box-shadow: 0 0 0 3px rgba(230, 0, 0, 0.12);
+        }
+
+        .dream-bike-form label {
+          display: block;
+          font-size: 13px;
+          font-weight: 700;
+          margin-bottom: 7px;
+          font-family: 'Barlow', sans-serif;
+          letter-spacing: 0.02em;
+        }
+
+        .dream-bike-form button {
+          width: 100%;
+          max-width: 420px;
+          padding: 15px 40px;
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: 1.4px;
+          text-transform: uppercase;
+          color: #fff;
+          background-color: #e60000;
+          border: none;
+          border-radius: 9px;
+          cursor: pointer;
+          font-family: 'Barlow', sans-serif;
+          transition: all 0.22s ease;
+        }
+
+        .dream-bike-form button:hover:not(:disabled) {
+          background-color: #cc0000;
           transform: translateY(-2px);
-          box-shadow: 0 10px 28px rgba(230,0,0,0.48) !important;
+          box-shadow: 0 10px 28px rgba(230, 0, 0, 0.48);
+        }
+
+        .dream-bike-form button:disabled {
+          background-color: #999;
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+
+        .form-message {
+          margin-top: 16px;
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Barlow', sans-serif;
+          max-width: 420px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .form-message.success {
+          background-color: #e0ffe0;
+          color: #00c600;
+        }
+
+        .form-message.error {
+          background-color: #ffe0e0;
+          color: #c60000;
         }
 
         @media (max-width: 860px) {
           .content-wrapper {
-            padding: 32px 16px !important;
+            padding: 32px 16px;
           }
           .hero-text h1 {
-            font-size: clamp(38px, 11vw, 58px) !important;
+            font-size: clamp(38px, 11vw, 58px);
           }
-          form {
+          .dream-bike-form {
             grid-template-columns: 1fr !important;
             gap: 16px !important;
-            max-width: 100% !important;
+            max-width: 100%;
           }
-          button {
-            max-width: 100% !important;
+          .dream-bike-form button {
+            max-width: 100%;
           }
         }
 
         @media (max-width: 480px) {
           .hero-text h1 {
-            font-size: clamp(32px, 10vw, 48px) !important;
+            font-size: clamp(32px, 10vw, 48px);
           }
         }
       `}</style>
@@ -178,7 +211,7 @@ const BookYourDreamBike = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: isMobile ? '0' : '40px 5vw',
+        padding: isMobile ? '60px 20px' : '40px 5vw',
       }}
       id="book-your-dream-bike">
         <div style={{
@@ -198,7 +231,7 @@ const BookYourDreamBike = () => {
           gap: isMobile ? '36px' : '60px',
         }}>
 
-          {/* Hero text – always centered */}
+          {/* Hero text */}
           <div className="hero-text" style={{
             color: '#fff',
             textAlign: 'center',
@@ -230,18 +263,110 @@ const BookYourDreamBike = () => {
             </h1>
           </div>
 
-          {/* Form – centered, no background on desktop */}
-          <div style={{
+          {/* Form */}
+          <form className="dream-bike-form" onSubmit={handleFormSubmit} style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '18px 24px',
             width: '100%',
-            color: isMobile ? '#111' : '#fff',
-            background: isMobile ? 'transparent' : 'transparent',
-            backdropFilter: isMobile ? 'none' : 'none',
-            borderRadius: '16px',
-            padding: isMobile ? '28px 20px' : '0',
-            boxShadow: isMobile ? '0 12px 44px rgba(0,0,0,0.2)' : 'none',
+            maxWidth: '620px',
+            margin: '0 auto',
           }}>
-            <FormFields labelColor={isMobile ? '#fff' : '#fff'} />
-          </div>
+            {/* Full Name */}
+            <div>
+              <label style={{ color: '#fff' }}>Full Name <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <input
+                type="text"
+                name="fullName"
+                value={formState.fullName}
+                onChange={handleInputChange}
+                placeholder="Your name"
+                required
+              />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label style={{ color: '#fff' }}>Phone <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <input
+                type="tel"
+                name="phone"
+                value={formState.phone}
+                onChange={handleInputChange}
+                placeholder="Phone number"
+                required
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label style={{ color: '#fff' }}>Email <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <input
+                type="email"
+                name="email"
+                value={formState.email}
+                onChange={handleInputChange}
+                placeholder="Email address"
+                required
+              />
+            </div>
+
+            {/* City */}
+            <div>
+              <label style={{ color: '#fff' }}>City <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <input
+                type="text"
+                name="city"
+                value={formState.city}
+                onChange={handleInputChange}
+                placeholder="Lucknow / Kanpur..."
+                required
+              />
+            </div>
+
+            {/* Brand */}
+            <div>
+              <label style={{ color: '#fff' }}>Brand <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <select
+                name="brand"
+                value={formState.brand}
+                onChange={handleInputChange}
+                required
+                style={{ color: formState.brand ? '#222' : '#999' }}
+              >
+                <option value="">Select brand</option>
+                {BRANDS.map(brand => (
+                  <option key={brand} value={brand}>{brand}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Model */}
+            <div>
+              <label style={{ color: '#fff' }}>Model <span style={{ color: '#ff4d4d' }}>*</span></label>
+              <input
+                type="text"
+                name="model"
+                value={formState.model}
+                onChange={handleInputChange}
+                placeholder="Classic 350 / Pulsar..."
+                required
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div style={{ gridColumn: '1 / -1', marginTop: '12px', textAlign: 'center' }}>
+              <button type="submit" disabled={loading}>
+                {loading ? 'Submitting...' : 'Enquire Now →'}
+              </button>
+
+              {message.text && (
+                <div className={`form-message ${message.type}`}>
+                  {message.text}
+                </div>
+              )}
+            </div>
+          </form>
 
         </div>
       </section>

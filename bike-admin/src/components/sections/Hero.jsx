@@ -1,5 +1,144 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// MEMOIZED FORM COMPONENT - isolated from carousel re-renders
+const EnquiryFormComponent = memo(({ 
+  formInputs, 
+  onInputChange, 
+  onSubmit, 
+  loading, 
+  message, 
+  isMobile = false 
+}) => {
+  const inputStyle = {
+    width: '100%',
+    padding: '11px 14px',
+    border: '1.5px solid #e0e0e0',
+    borderRadius: 7,
+    fontSize: 13,
+    fontFamily: "'Barlow', sans-serif",
+    color: '#111',
+    outline: 'none',
+    background: '#fff',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  };
+
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div style={{ width: '100%' }}>
+      <h2 style={{
+        fontFamily: "'Barlow Condensed', sans-serif",
+        fontSize: 22,
+        fontWeight: 600,
+        color: '#000',
+        margin: `0 0 ${isMobile ? 14 : 16}px`,
+        letterSpacing: '-0.02em',
+      }}>
+        Find Your Perfect Bike
+      </h2>
+
+      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <input 
+          type="text"
+          name="fullName" 
+          value={formInputs.fullName} 
+          onChange={onInputChange}
+          placeholder="Full Name" 
+          required 
+          style={inputStyle} 
+          autoComplete="name"
+        />
+        <input 
+          type="tel" 
+          name="phone" 
+          value={formInputs.phone} 
+          onChange={onInputChange}
+          placeholder="Phone Number" 
+          required 
+          style={inputStyle}
+          autoComplete="tel"
+        />
+        <select 
+          name="brand" 
+          value={formInputs.brand} 
+          onChange={onInputChange} 
+          required
+          style={{ ...inputStyle, color: formInputs.brand ? '#111' : '#777' }}
+        >
+          <option value="" disabled>Select Models</option>
+          {['Shine 100', 'Shine 125', 'SP 125', 'Unicorn', 'Hornet 2.0', 'CB350RS', 'CB300F', 'Activa 6G', 'Activa 125', 'Dio', 'Dio 125', 'Grazia'].map(b => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input 
+            type="text"
+            name="model" 
+            value={formInputs.model} 
+            onChange={onInputChange}
+            placeholder="Model" 
+            style={{ ...inputStyle, width: '50%' }}
+            autoComplete="off"
+          />
+          <input 
+            type="text"
+            name="city" 
+            value={formInputs.city} 
+            onChange={onInputChange}
+            placeholder="City" 
+            style={{ ...inputStyle, width: '50%' }}
+            autoComplete="address-level2"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          style={{
+            marginTop: 6,
+            padding: '13px',
+            background: loading ? '#999' : (hovered ? '#cc0000' : '#000'),
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            border: 'none',
+            borderRadius: 7,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            boxShadow: hovered && !loading ? '0 6px 20px rgba(204,0,0,0.35)' : '0 4px 14px rgba(0,0,0,0.2)',
+            transform: hovered && !loading ? 'translateY(-2px)' : 'translateY(0)',
+            transition: 'all 0.2s ease',
+            width: '100%',
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          {loading ? 'Submitting...' : 'Submit Enquiry →'}
+        </button>
+        {message.text && (
+          <div style={{
+            marginTop: 10,
+            padding: '10px 12px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Barlow', sans-serif",
+            backgroundColor: message.type === 'success' ? '#e0ffe0' : '#ffe0e0',
+            color: message.type === 'success' ? '#00c600' : '#c60000',
+            textAlign: 'center',
+          }}>
+            {message.text}
+          </div>
+        )}
+      </form>
+    </div>
+  );
+});
+
+EnquiryFormComponent.displayName = 'EnquiryForm';
 
 const heroSlides = [
   {
@@ -47,9 +186,19 @@ export default function Hero() {
   const [current, setCurrent] = useState(0);
   const [textVisible, setTextVisible] = useState(true);
   const [tab, setTab] = useState('new');
-  const [form, setForm] = useState({ name: '', phone: '', brand: '', model: '', city: '' });
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
   const transRef = useRef(false);
+
+  // NEW FORM STATE
+  const [formInputs, setFormInputs] = useState({
+    fullName: '',
+    phone: '',
+    brand: '',
+    model: '',
+    city: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     heroSlides.forEach(s => { const img = new Image(); img.src = s.image; });
@@ -80,109 +229,54 @@ export default function Hero() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileFormOpen]);
 
-  const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
-  const handleSubmit = e => {
+  const handleInputChange = useCallback(e => {
+    const { name, value } = e.target;
+    setFormInputs(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleSubmit = useCallback(async e => {
     e.preventDefault();
-    alert(`Enquiry submitted!\nName: ${form.name}\nPhone: ${form.phone}\nBrand: ${form.brand}\nModel: ${form.model}\nCity: ${form.city}`);
-    setMobileFormOpen(false);
-  };
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('fi-sender-fullName', formInputs.fullName);
+      formDataToSend.append('fi-text-phone', formInputs.phone);
+      formDataToSend.append('fi-text-brand', formInputs.brand);
+      formDataToSend.append('fi-text-model', formInputs.model);
+      formDataToSend.append('fi-text-city', formInputs.city);
+
+      const response = await fetch('https://forminit.com/f/x1mlf5p6870', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        setMessage({
+          type: 'success',
+          text: 'Thank you! Your inquiry has been received.'
+        });
+        setFormInputs({ fullName: '', phone: '', brand: '', model: '', city: '' });
+        setTimeout(() => setMobileFormOpen(false), 1500);
+      } else {
+        setMessage({
+          type: 'error',
+          text: 'Error submitting form. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Form error:', error);
+      setMessage({
+        type: 'error',
+        text: 'Network error. Please check your connection and try again.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [formInputs]);
 
   const slide = heroSlides[current];
-
-  const inputStyle = {
-    width: '100%',
-    padding: '11px 14px',
-    border: '1.5px solid #e0e0e0',
-    borderRadius: 7,
-    fontSize: 13,
-    fontFamily: "'Barlow', sans-serif",
-    color: '#111',
-    outline: 'none',
-    background: '#fff',
-    boxSizing: 'border-box',
-    transition: 'border-color 0.2s',
-  };
-
-  const SubmitButton = () => {
-    const [hovered, setHovered] = useState(false);
-    return (
-      <button
-        type="submit"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          marginTop: 6,
-          padding: '13px',
-          background: hovered ? '#cc0000' : '#000',
-          color: '#fff',
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          border: 'none',
-          borderRadius: 7,
-          cursor: 'pointer',
-          boxShadow: hovered ? '0 6px 20px rgba(204,0,0,0.35)' : '0 4px 14px rgba(0,0,0,0.2)',
-          transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
-          transition: 'all 0.2s ease',
-          width: '100%',
-        }}
-      >
-        Submit Enquiry →
-      </button>
-    );
-  };
-
-  const EnquiryForm = ({ isMobile = false }) => (
-    <div style={{ width: '100%' }}>
-      <h2 style={{
-        fontFamily: "'Barlow Condensed', sans-serif",
-        fontSize: 22,
-        fontWeight: 600,
-        color: '#000',
-        margin: `0 0 ${isMobile ? 14 : 16}px`,
-        letterSpacing: '-0.02em',
-      }}>
-        Find Your Perfect Bike
-      </h2>
-
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        {['new'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: '8px 18px',
-            fontSize: 13, fontWeight: 700,
-            borderRadius: 6,
-            border: tab === t ? 'none' : '2px solid #333',
-            background: tab === t ? '#000' : 'transparent',
-            color: tab === t ? '#fff' : '#222',
-            cursor: 'pointer', transition: 'all 0.2s',
-            fontFamily: "'Barlow', sans-serif",
-          }}>
-            {t === 'new' ? 'New Bike' : 'Used Bike'}
-          </button>
-        ))}
-      </div>
-
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input name="name" value={form.name} onChange={handleChange}
-          placeholder="Full Name" required style={inputStyle} />
-        <input type="tel" name="phone" value={form.phone} onChange={handleChange}
-          placeholder="Phone Number" required style={inputStyle} />
-        <select name="brand" value={form.brand} onChange={handleChange} required
-          style={{ ...inputStyle, color: form.brand ? '#111' : '#777' }}>
-          <option value="" disabled>Select Models</option>
-          {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input name="model" value={form.model} onChange={handleChange}
-            placeholder="Model" style={{ ...inputStyle, width: '50%' }} />
-          <input name="city" value={form.city} onChange={handleChange}
-            placeholder="City" style={{ ...inputStyle, width: '50%' }} />
-        </div>
-        <SubmitButton />
-      </form>
-    </div>
-  );
 
   return (
     <>
@@ -230,7 +324,13 @@ export default function Hero() {
             boxShadow: '0 12px 56px rgba(0,0,0,0.28)',
             boxSizing: 'border-box',
           }}>
-            <EnquiryForm />
+            <EnquiryFormComponent 
+              formInputs={formInputs}
+              onInputChange={handleInputChange}
+              onSubmit={handleSubmit}
+              loading={loading}
+              message={message}
+            />
           </div>
 
           {/* Right: bike title (commented as in original) */}
@@ -435,7 +535,14 @@ export default function Hero() {
                 }}
               >✕</button>
             </div>
-            <EnquiryForm isMobile />
+            <EnquiryFormComponent 
+              formInputs={formInputs}
+              onInputChange={handleInputChange}
+              onSubmit={handleSubmit}
+              loading={loading}
+              message={message}
+              isMobile
+            />
           </div>
         </div>
       )}
