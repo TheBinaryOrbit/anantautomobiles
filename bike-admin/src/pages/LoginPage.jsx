@@ -65,7 +65,7 @@ export default function LoginPage() {
             <Bike size={20} color="#fff" />
           </div>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700 }}>Bike Shop Admin</div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>Anant Automobiles Admin</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Management Portal</div>
           </div>
         </div>
