@@ -77,7 +77,7 @@ export default function AccessoriesPage() {
         ? <img src={`${STATIC_BASE}${r.imageUrl}`} alt={r.name} style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
         : <div style={{ width: 36, height: 36, background: '#FBEAF0', borderRadius: 6 }} /> },
     { key: 'name',            label: 'Name' },
-    { key: 'description',     label: 'Description', wrap: true, maxWidth: 200, render: r => <span style={{ display: 'block', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</span> },
+    { key: 'remark',          label: 'Remark', wrap: true, maxWidth: 200, render: r => <span style={{ display: 'block', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.remark || '—'}</span> },
     { key: 'price',           label: 'Price', render: r => fmtINR(r.price) },
     { key: 'unit',            label: 'Unit' },
     { key: 'quantityInStock', label: 'Stock', render: r => <span style={{ fontWeight: 600, color: r.quantityInStock <= 5 ? '#E24B4A' : 'var(--text-primary)' }}>{r.quantityInStock}</span> },
@@ -108,8 +108,8 @@ export default function AccessoriesPage() {
             <Field label="Unit *"><Input value={form.unit || ''} onChange={e => set('unit', e.target.value)} placeholder="PIECE, SET, BOX" /></Field>
             <Field label="Price *"><Input type="number" value={form.price || ''} onChange={e => set('price', e.target.value)} /></Field>
             <Field label="Quantity in Stock *"><Input type="number" value={form.quantityInStock || ''} onChange={e => set('quantityInStock', e.target.value)} /></Field>
-            <Field label="Description *" style={{ gridColumn: '1/-1' }}>
-              <Textarea value={form.description || ''} onChange={e => set('description', e.target.value)} rows={2} />
+            <Field label="Remark" style={{ gridColumn: '1/-1' }}>
+              <Textarea value={form.remark || ''} onChange={e => set('remark', e.target.value)} rows={2} />
             </Field>
             <Field label="Image" style={{ gridColumn: '1/-1' }}>
               <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} style={{ fontSize: 13, fontFamily: 'var(--font-sans)' }} />

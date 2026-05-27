@@ -79,7 +79,8 @@ export default function BikeModelsPage() {
     { key: 'category',      label: 'Category' },
     { key: 'engineCapacity',label: 'Engine', render: r => r.engineCapacity ? `${r.engineCapacity}cc` : '—' },
     { key: 'onRoadPrice',   label: 'On-Road Price', render: r => fmtINR(r.onRoadPrice) },
-    { key: 'gstRate',       label: 'GST%', render: r => r.gstRate ? `${r.gstRate}%` : '—' },
+    { key: 'cgstRate',      label: 'CGST%', render: r => r.cgstRate ? `${r.cgstRate}%` : '0%' },
+    { key: 'sgstRate',      label: 'SGST%', render: r => r.sgstRate ? `${r.sgstRate}%` : '0%' },
   ];
 
   return (
@@ -96,27 +97,30 @@ export default function BikeModelsPage() {
             <Field label="Name *"><Input value={form.name || ''} onChange={e => set('name', e.target.value)} /></Field>
             <Field label="Brand *"><Input value={form.brand || ''} onChange={e => set('brand', e.target.value)} /></Field>
             <Field label="Category *"><Input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="e.g. Commuter, Sports" /></Field>
-            <Field label="Fuel Type"><Input value={form.fuelType || ''} onChange={e => set('fuelType', e.target.value)} /></Field>
-            <Field label="Description *" style={{ gridColumn: '1/-1' }}>
-              <Textarea value={form.description || ''} onChange={e => set('description', e.target.value)} rows={2} />
+            <Field label="Fuel Type *"><Input value={form.fuelType || ''} onChange={e => set('fuelType', e.target.value)} /></Field>
+            <Field label="Remark" style={{ gridColumn: '1/-1' }}>
+              <Textarea value={form.remark || form.description || ''} onChange={e => set('remark', e.target.value)} rows={2} />
             </Field>
-            <Field label="Image" style={{ gridColumn: '1/-1' }}>
+            <Field label="Image *" style={{ gridColumn: '1/-1' }}>
               <input type="file" accept="image/*" onChange={e => setFile(e.target.files[0])} style={{ fontSize: 13, fontFamily: 'var(--font-sans)' }} />
               {modal.id && !file && form.imageUrl && (
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Current: {form.imageUrl} — upload new to replace</div>
               )}
             </Field>
-            <Field label="Engine Capacity (cc)"><Input type="number" value={form.engineCapacity || ''} onChange={e => set('engineCapacity', e.target.value)} /></Field>
-            <Field label="Launch Year"><Input type="number" value={form.launchYear || ''} onChange={e => set('launchYear', e.target.value)} /></Field>
-            <Field label="Mileage (kmpl)"><Input type="number" value={form.mileage || ''} onChange={e => set('mileage', e.target.value)} /></Field>
+            <Field label="Engine Capacity (cc) *"><Input type="number" value={form.engineCapacity || ''} onChange={e => set('engineCapacity', e.target.value)} /></Field>
+            <Field label="Launch Year *"><Input type="number" value={form.launchYear || ''} onChange={e => set('launchYear', e.target.value)} /></Field>
+            <Field label="Mileage (kmpl) *"><Input type="number" value={form.mileage || ''} onChange={e => set('mileage', e.target.value)} /></Field>
             <Field label="Weight (kg)"><Input type="number" value={form.weight || ''} onChange={e => set('weight', e.target.value)} /></Field>
-            <Field label="Ex-Showroom Price"><Input type="number" value={form.exShowroomPrice || ''} onChange={e => set('exShowroomPrice', e.target.value)} /></Field>
-            <Field label="RTO Charges"><Input type="number" value={form.rtoCharges || ''} onChange={e => set('rtoCharges', e.target.value)} /></Field>
-            <Field label="Insurance Charges"><Input type="number" value={form.insuranceCharges || ''} onChange={e => set('insuranceCharges', e.target.value)} /></Field>
-            <Field label="Other Charges"><Input type="number" value={form.otherCharges || ''} onChange={e => set('otherCharges', e.target.value)} /></Field>
-            <Field label="On-Road Price"><Input type="number" value={form.onRoadPrice || ''} onChange={e => set('onRoadPrice', e.target.value)} /></Field>
-            <Field label="GST Rate (%)"><Input type="number" value={form.gstRate || ''} onChange={e => set('gstRate', e.target.value)} /></Field>
-            <Field label="HSN Code"><Input value={form.hsnCode || ''} onChange={e => set('hsnCode', e.target.value)} /></Field>
+            <Field label="Ex-Showroom Price *"><Input type="number" value={form.exShowroomPrice || ''} onChange={e => set('exShowroomPrice', e.target.value)} /></Field>
+            <Field label="RTO Charges (%) *"><Input type="number" value={form.rtoCharges || ''} onChange={e => set('rtoCharges', e.target.value)} /></Field>
+            <Field label="Insurance Charges *"><Input type="number" value={form.insuranceCharges || ''} onChange={e => set('insuranceCharges', e.target.value)} /></Field>
+            <Field label="Other Charges *"><Input type="number" value={form.otherCharges || ''} onChange={e => set('otherCharges', e.target.value)} /></Field>
+            <Field label="On-Road Price *"><Input type="number" value={form.onRoadPrice || ''} onChange={e => set('onRoadPrice', e.target.value)} /></Field>
+            <Field label="CGST Rate (%) *"><Input type="number" value={form.cgstRate || ''} onChange={e => set('cgstRate', e.target.value)} /></Field>
+            <Field label="SGST Rate (%) *"><Input type="number" value={form.sgstRate || ''} onChange={e => set('sgstRate', e.target.value)} /></Field>
+            <Field label="IGST Rate (%) *"><Input type="number" value={form.igstRate || ''} onChange={e => set('igstRate', e.target.value)} /></Field>
+            <Field label="Cess Rate (%) *"><Input type="number" value={form.cessRate || ''} onChange={e => set('cessRate', e.target.value)} /></Field>
+            <Field label="HSN Code *"><Input value={form.hsnCode || ''} onChange={e => set('hsnCode', e.target.value)} /></Field>
           </FormGrid>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
             <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>

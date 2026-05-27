@@ -9,6 +9,7 @@ export const authApi = {
 /* ── Bikes ── */
 export const bikesApi = {
   getAll:  ()          => api.get('/bikes').then(r => r.data),
+  getById: (id)        => api.get(`/bikes/${id}`).then(r => r.data),
   create:  (body)      => api.post('/bikes/create', body).then(r => r.data),
   update:  (id, body)  => api.put(`/bikes/${id}`, body).then(r => r.data),
   remove:  (id)        => api.delete(`/bikes/${id}`).then(r => r.data),
@@ -57,6 +58,14 @@ export const salesApi = {
   updateStatus:      (id, status)          => api.patch(`/sales/${id}/status`, { status }).then(r => r.data),
   updatePendingAmount: (id, pendingAmount) => api.patch(`/sales/${id}/pending`, { pendingAmount }).then(r => r.data),
   delete:            (id)                  => api.delete(`/sales/${id}`).then(r => r.data),
+};
+
+/* ── Purchases ── */
+export const purchasesApi = {
+  getAll:  ()          => api.get('/purchases').then(r => r.data),
+  getById: (id)        => api.get(`/purchases/${id}`).then(r => r.data),
+  create:  (body)      => api.post('/purchases/create', body).then(r => r.data),
+  remove:  (id)        => api.delete(`/purchases/${id}`).then(r => r.data),
 };
 
 /* ── Roles ── */

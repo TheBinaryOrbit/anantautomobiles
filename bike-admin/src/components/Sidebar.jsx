@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { path: '/accessories',  label: 'Accessories',  iconName: 'Wrench' },
   { path: '/customers',    label: 'Customers',    iconName: 'Users' },
   { path: '/suppliers',    label: 'Suppliers',    iconName: 'Building2' },
+  { path: '/purchases',    label: 'Purchases',    iconName: 'Truck' },
   { path: '/sales',        label: 'Sales',        iconName: 'ShoppingCart' },
   { path: '/users',        label: 'Users',        iconName: 'User' },
   { path: '/roles',        label: 'Roles',        iconName: 'KeyRound' },

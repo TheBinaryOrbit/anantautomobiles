@@ -9,10 +9,14 @@ import useWindowSize from './hooks/useWindowSize.js';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import BikesPage from './pages/BikesPage';
+import BikeDetailPage from './pages/BikeDetailPage';
 import BikeModelsPage from './pages/BikeModelsPage';
 import AccessoriesPage from './pages/AccessoriesPage';
 import CustomersPage from './pages/CustomersPage';
 import SuppliersPage from './pages/SuppliersPage';
+import PurchasesPage from './pages/PurchasesPage';
+import PurchaseCreatePage from './pages/PurchaseCreatePage';
+import PurchaseDetailPage from './pages/PurchaseDetailPage';
 import SalesPage from './pages/SalesPage';
 import SalesCreatePage from './pages/SalesCreatePage';
 import SalesDetailPage from './pages/SalesDetailPage';
@@ -67,10 +71,14 @@ function AppRoutes() {
       <Route element={<ProtectedLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/bikes" element={<BikesPage />} />
+        <Route path="/bikes/:id" element={<BikeDetailPage />} />
         <Route path="/bike-models" element={<BikeModelsPage />} />
         <Route path="/accessories" element={<AccessoriesPage />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/purchases" element={<PurchasesPage />} />
+        <Route path="/purchases/new" element={<PurchaseCreatePage />} />
+        <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/sales/new" element={<SalesCreatePage />} />
         <Route path="/sales/:id" element={<SalesDetailPage />} />
