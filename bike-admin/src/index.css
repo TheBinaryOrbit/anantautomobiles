@@ -71,3 +71,5 @@ html, body, #root {
 .Toastify__progress-bar--success { background: var(--success-fg) !important; }
 .Toastify__progress-bar--error   { background: var(--danger-fg) !important; }
 .Toastify__close-button { color: currentColor !important; opacity: 0.5 !important; }
+
+
