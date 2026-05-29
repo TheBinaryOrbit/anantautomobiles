@@ -15,14 +15,13 @@ const MID_GRAY = '#cccccc';
 
 const COL = {
   sno: MARGIN,
-  model: MARGIN + 30,
-  color: MARGIN + 180,
-  hsn: MARGIN + 240,
-  engine: MARGIN + 320,
-  chassis: MARGIN + 430,   // pushed right
-  unitPrice: MARGIN + 560, // pushed more right
-  gst: MARGIN + 620,
-  amount: PAGE_W - MARGIN  // right edge
+  model: MARGIN + 25,
+  hsn: MARGIN + 180,
+  engine: MARGIN + 235,
+  chassis: MARGIN + 335,
+  price: MARGIN + 435, // Ex-showroom
+  gst: MARGIN + 505,   // Combined GST %
+  amount: PAGE_W - MARGIN  // lineTotal
 };
 
 /** Format raw phone digits → +91 XXXXX XXXXX */
@@ -119,8 +118,8 @@ class InvoiceService {
             ['Name of the Customer', sale.customer?.name || ''],
             ['Address', addrStr],
             ['Mobile / Home Ph #', formatPhone(sale.customer?.phone)],
+            ['Finance Company', sale.financeCompany || 'N/A'],
             ['Payment Type', sale.paymentType || ''],
-            ['Payment Method', sale.paymentMethod || ''],
             ['Status', sale.status || ''],
         ];
 
@@ -141,14 +140,13 @@ class InvoiceService {
 
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor(BLACK);
         doc.text('S.No', COL.sno, tblHdrY, { width: 25 });
-        doc.text('Model', COL.model, tblHdrY, { width: 138 });
-        doc.text('Color', COL.color, tblHdrY, { width: 44 });
-        doc.text('HSN No', COL.hsn, tblHdrY, { width: 52 });
-        doc.text('Engine#', COL.engine, tblHdrY, { width: 82 });
-        doc.text('Chassis#', COL.chassis, tblHdrY, { width: 84 });
-        doc.text('Price', COL.price, tblHdrY, { width: 40 });
-        doc.text('GST%', COL.gst, tblHdrY, { width: 30 });
-        this._rtxt(doc, 'Amount', COL.amount, tblHdrY);
+        doc.text('Model / Color', COL.model, tblHdrY, { width: 150 });
+        doc.text('HSN', COL.hsn, tblHdrY, { width: 50 });
+        doc.text('Engine#', COL.engine, tblHdrY, { width: 95 });
+        doc.text('Chassis#', COL.chassis, tblHdrY, { width: 95 });
+        doc.text('Ex-Showroom', COL.price, tblHdrY, { width: 65 });
+        doc.text('GST%', COL.gst, tblHdrY, { width: 35 });
+        this._rtxt(doc, 'Total', COL.amount, tblHdrY);
 
         this._hr(doc, tblHdrY + 14, MID_GRAY);
 
@@ -156,41 +154,53 @@ class InvoiceService {
         let rowY = tblHdrY + 18;
         doc.font('Helvetica').fontSize(7.5).fillColor(BLACK);
 
+        let totalRto = 0;
+        let totalIns = 0;
+        let totalOther = 0;
+        let totalCgst = 0;
+        let totalSgst = 0;
+        let totalIgst = 0;
+        let totalCess = 0;
+        let totalTaxable = 0;
+
         sale.items.forEach((item, idx) => {
             const isBike = item.itemType === 'BIKE';
-            // BikeModel.brand + BikeModel.name
             const modelName = isBike
-                ? `${item.bike?.model?.brand || ''} ${item.bike?.model?.name || ''}`.trim()
+                ? `${item.model?.brand || ''} ${item.model?.name || ''} (${item.color || 'Any'})`.trim()
                 : item.accessory?.name || '';
-            // Bike fields
-            const color = isBike ? item.bike?.color || '' : '';
-            const engine = isBike ? item.bike?.engineNumber || '' : '—';
-            const chassis = isBike ? item.bike?.chassisNumber || '' : '—';
-            // BikeModel.hsnCode
-            const hsn = isBike ? item.bike?.model?.hsnCode || '' : '';
-            // BikeModel.gstRate (single combined rate)
-            const gstRate = item?.taxRate;
+            
+            const engine = item.bike?.engineNumber || '— (PDI Stage)';
+            const chassis = item.bike?.chassisNumber || '— (PDI Stage)';
+            const hsn = isBike ? item.model?.hsnCode || '' : '';
+            
+            // Snapshot values or fallbacks
+            const exShowroom = item.exShowroomPrice || item.unitPrice || 0;
+            const cgstRate = item.cgstRate || 0;
+            const sgstRate = item.sgstRate || 0;
+            const igstRate = item.igstRate || 0;
+            const cessRate = item.cessRate || 0;
+            const combinedGst = cgstRate + sgstRate + igstRate + cessRate;
+
+            totalTaxable += exShowroom * item.quantity;
+            totalCgst += (exShowroom * item.quantity * cgstRate) / 100;
+            totalSgst += (exShowroom * item.quantity * sgstRate) / 100;
+            totalIgst += (exShowroom * item.quantity * igstRate) / 100;
+            totalCess += (exShowroom * item.quantity * cessRate) / 100;
+            
+            totalRto += (item.rtoCharges || 0);
+            totalIns += (item.insuranceCharges || 0);
+            totalOther += (item.otherCharges || 0);
 
             doc.text(`${idx + 1}`, COL.sno, rowY, { width: 25 });
-            doc.text(modelName, COL.model, rowY, { width: 138 });
-            doc.text(color, COL.color, rowY, { width: 44 });
-            doc.text(hsn, COL.hsn, rowY, { width: 52 });
-            doc.text(engine, COL.engine, rowY, { width: 82 });
-            doc.text(chassis, COL.chassis, rowY, { width: 84 });
-            doc.text(`${gstRate}%`, COL.gst, rowY, { width: 30 });
-            doc.text(`${item.unitPrice.toFixed(2)}`, COL.price, rowY, { width: 40 });
+            doc.text(modelName, COL.model, rowY, { width: 150 });
+            doc.text(hsn, COL.hsn, rowY, { width: 50 });
+            doc.text(engine, COL.engine, rowY, { width: 95 });
+            doc.text(chassis, COL.chassis, rowY, { width: 95 });
+            doc.text(`${exShowroom.toFixed(2)}`, COL.price, rowY, { width: 65 });
+            doc.text(`${combinedGst}%`, COL.gst, rowY, { width: 35 });
             this._rtxt(doc, (item.lineTotal || 0).toFixed(2), COL.amount, rowY);
 
-            rowY += 12;
-            // Discount sub-line if applicable
-            if ((item.discountAmount || 0) > 0) {
-                doc.font('Helvetica').fontSize(7).fillColor(DARK_GRAY)
-                    .text(`Discount: -₹${(item.discountAmount * item.quantity).toFixed(2)}`,
-                        COL.model, rowY, { width: 200 });
-                doc.font('Helvetica').fontSize(7.5).fillColor(BLACK);
-                rowY += 10;
-            }
-            rowY += 4;
+            rowY += 14;
         });
 
         this._hr(doc, rowY, MID_GRAY);
@@ -201,21 +211,25 @@ class InvoiceService {
         const sumValX = PAGE_W - MARGIN;
         const sumLblW = sumValX - sumLblX - 68;
 
-        const taxableVal = (sale.subtotal || 0) - (sale.discountAmount || 0);
-
         const summaryRows = [
-            { lbl: 'Sub Total', val: (sale.subtotal || 0).toFixed(2) },
+            { lbl: 'Taxable Value', val: totalTaxable.toFixed(2) },
+            { lbl: 'CGST', val: totalCgst.toFixed(2) },
+            { lbl: 'SGST', val: totalSgst.toFixed(2) },
+            { lbl: 'IGST', val: totalIgst.toFixed(2) },
+            { lbl: 'CESS', val: totalCess.toFixed(2) },
+            { lbl: 'RTO / Registration', val: totalRto.toFixed(2) },
+            { lbl: 'Insurance', val: totalIns.toFixed(2) },
+            { lbl: 'Other Charges', val: totalOther.toFixed(2) },
             { lbl: 'Discount', val: `-${(sale.discountAmount || 0).toFixed(2)}` },
-            { lbl: 'Taxable Value', val: taxableVal.toFixed(2) },
-            { lbl: `Tax on ${taxableVal.toFixed(2)}`, val: (sale.taxAmount || 0).toFixed(2) },
-            { lbl: 'Net Amount', val: (sale.totalAmount || 0).toFixed(2) },
         ];
 
         doc.font('Helvetica').fontSize(8).fillColor(BLACK);
         summaryRows.forEach(({ lbl, val }) => {
-            doc.text(lbl, sumLblX, rowY, { width: sumLblW });
-            this._rtxt(doc, val, sumValX, rowY);
-            rowY += 13;
+            if (parseFloat(val) !== 0) {
+                doc.text(lbl, sumLblX, rowY, { width: sumLblW });
+                this._rtxt(doc, val, sumValX, rowY);
+                rowY += 13;
+            }
         });
 
         this._hr(doc, rowY, MID_GRAY);
@@ -226,6 +240,16 @@ class InvoiceService {
         doc.font('Helvetica-Bold').fontSize(9).fillColor(BLACK)
             .text('Grand Total', sumLblX, rowY, { width: sumLblW });
         this._rtxt(doc, (sale.totalAmount || 0).toFixed(2), sumValX, rowY);
+        rowY += 17;
+
+        // Paid & Pending
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#10b981')
+            .text('Paid Amount', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, (sale.paidAmount || 0).toFixed(2), sumValX, rowY);
+        rowY += 13;
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#f59e0b')
+            .text('Pending Amount', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, (sale.pendingAmount || 0).toFixed(2), sumValX, rowY);
         rowY += 17;
 
         // Round Off
@@ -418,6 +442,124 @@ class InvoiceService {
         this._hr(doc, y + 36, RED, 1);
     }
 
+    // ─── PAGE 3: PDI SLIP ─────────────────────────────────────────────────────
+    _buildPDISlipPage(doc, sale) {
+        const pgTop = 30;
+
+        // ── Logo + Title ──────────────────────────────────────────────────────────
+        this._drawLogo(doc, MARGIN, pgTop, 100, 30);
+        doc.font('Helvetica-Bold').fontSize(18).fillColor(BLACK)
+            .text('PDI SLIP', MARGIN, pgTop + 6, { width: CONTENT_W, align: 'center' });
+        doc.font('Helvetica').fontSize(9).fillColor(DARK_GRAY)
+            .text(`Sale Ref: ${sale.id?.slice(0, 8).toUpperCase()}`, MARGIN, pgTop + 28,
+                { width: CONTENT_W, align: 'center' });
+        doc.font('Helvetica').fontSize(9)
+            .text(`Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`,
+                MARGIN, pgTop + 40, { width: CONTENT_W, align: 'center' });
+
+        const divY = pgTop + 58;
+        this._hr(doc, divY, RED, 1.5);
+
+        // ── Customer Details ──────────────────────────────────────────────────────
+        let y = divY + 10;
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK)
+            .text('CUSTOMER DETAILS', MARGIN, y);
+        y += 14;
+        this._hr(doc, y, MID_GRAY);
+        y += 8;
+
+        const custFields = [
+            ['Name', sale.customer?.name || ''],
+            ['Phone', formatPhone(sale.customer?.phone)],
+        ];
+        custFields.forEach(([lbl, val]) => {
+            doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK_GRAY)
+                .text(`${lbl}:`, MARGIN, y, { width: 55 });
+            doc.font('Helvetica').fontSize(9).fillColor(BLACK)
+                .text(val, MARGIN + 58, y, { width: CONTENT_W - 58 });
+            y += 15;
+        });
+
+        this._hr(doc, y, MID_GRAY);
+        y += 15;
+
+        // ── Vehicle Details (PDI focused) ─────────────────────────────────────────
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK).text('VEHICLE DETAILS', MARGIN, y);
+        y += 14;
+        this._hr(doc, y, MID_GRAY);
+        y += 10;
+
+        const bikeItems = (sale.items || []).filter(it => it.itemType === 'BIKE');
+        
+        bikeItems.forEach((item, idx) => {
+            doc.font('Helvetica-Bold').fontSize(10).fillColor(BLACK)
+                .text(`Vehicle #${idx + 1}`, MARGIN, y);
+            y += 16;
+
+            const fields = [
+                ['Model', `${item.model?.brand || ''} ${item.model?.name || ''}`],
+                ['Color', item.color || 'Any'],
+                ['Engine #', '___________________________ (Fill at PDI)'],
+                ['Chassis #', '___________________________ (Fill at PDI)'],
+                ['Key Number', '___________________________'],
+                ['Battery Number', '___________________________'],
+                ['Tyre Make', '___________________________'],
+            ];
+
+            fields.forEach(([lbl, val]) => {
+                doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK_GRAY)
+                    .text(`${lbl}:`, MARGIN + 10, y, { width: 80 });
+                doc.font('Helvetica').fontSize(9).fillColor(BLACK)
+                    .text(val, MARGIN + 95, y, { width: CONTENT_W - 105 });
+                y += 18;
+            });
+            y += 5;
+        });
+
+        this._hr(doc, y, MID_GRAY);
+        y += 20;
+
+        // ── PDI Checklist Placeholder ─────────────────────────────────────────────
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK).text('PDI CHECKLIST', MARGIN, y);
+        y += 16;
+        
+        const checks = [
+            'Battery Voltage Checked & Charged',
+            'Engine Oil Level Checked',
+            'Tyre Pressure Checked',
+            'All Electrical Functions (Lights, Horn, etc.) Checked',
+            'Brakes & Clutch Adjustment Checked',
+            'Toolkit & Owners Manual Included',
+            'First Aid Kit Included',
+            'Vehicle Cleaned & Polished'
+        ];
+
+        checks.forEach(check => {
+            doc.rect(MARGIN + 5, y - 1, 8, 8).stroke();
+            doc.font('Helvetica').fontSize(8.5).fillColor(BLACK)
+                .text(check, MARGIN + 18, y);
+            y += 14;
+        });
+
+        y += 20;
+        
+        // ── Signatures ────────────────────────────────────────────────────────────
+        const sigY = y;
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY)
+            .text("PDI Engineer Sign", MARGIN, sigY);
+        doc.font('Helvetica-Bold').fontSize(8)
+            .text("Customer's Acknowledgment", PAGE_W - MARGIN - 150, sigY, { width: 150, align: 'right' });
+        
+        y += 35;
+        this._hr(doc, y, MID_GRAY, 0.5);
+        y += 5;
+        doc.font('Helvetica').fontSize(7).fillColor(DARK_GRAY)
+            .text(`Generated on ${new Date().toLocaleString('en-IN')}`,
+                MARGIN, y, { width: CONTENT_W, align: 'right' });
+
+        this._hr(doc, y + 15, RED, 1);
+    }
+
     // ─── Main PDF generation ───────────────────────────────────────────────────
     generateInvoicePDF(sale, filePath) {
         return new Promise((resolve, reject) => {
@@ -438,6 +580,39 @@ class InvoiceService {
                 reject(err);
             }
         });
+    }
+
+    generatePDISlipPDF(sale, filePath) {
+        return new Promise((resolve, reject) => {
+            try {
+                const doc = new PDFDocument({ margin: 0, size: 'A4' });
+                const stream = fs.createWriteStream(filePath);
+                doc.pipe(stream);
+
+                this._buildPDISlipPage(doc, sale);
+
+                doc.end();
+                stream.on('finish', resolve);
+                stream.on('error', reject);
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    async savePDISlip(sale) {
+        try {
+            const pdiDir = path.join(__dirname, '../../uploads/pdi');
+            if (!fs.existsSync(pdiDir)) {
+                fs.mkdirSync(pdiDir, { recursive: true });
+            }
+            const fileName = `pdi-${sale.id}-${Date.now()}.pdf`;
+            const filePath = path.join(pdiDir, fileName);
+            await this.generatePDISlipPDF(sale, filePath);
+            return { fileName, url: `uploads/pdi/${fileName}`, fullPath: filePath };
+        } catch (err) {
+            throw err;
+        }
     }
 
     async saveInvoice(sale) {

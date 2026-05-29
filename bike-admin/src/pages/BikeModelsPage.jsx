@@ -47,6 +47,15 @@ export default function BikeModelsPage() {
   };
 
   const save = async () => {
+    // Validate tax rates
+    const rates = ['cgstRate', 'sgstRate', 'igstRate', 'cessRate'];
+    for (const r of rates) {
+      if (parseFloat(form[r]) > 100) {
+        toast.error(`${r.replace('Rate', '').toUpperCase()} cannot exceed 100%`);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const fd = buildFD();

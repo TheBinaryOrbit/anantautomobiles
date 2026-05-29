@@ -112,6 +112,29 @@ class SalesController {
     }
   }
 
+  async assignBike(req, res, next) {
+    try {
+      const { id } = req.params; // saleItemId
+      const { bikeId } = req.body;
+
+      if (!id || !bikeId) {
+        return ApiResponse.badRequest(res, 'Sale Item ID and Bike ID are required');
+      }
+
+      const updatedItem = await salesService.assignBikeToSaleItem(id, bikeId);
+      return ApiResponse.success(res, 'Bike assigned successfully', updatedItem, 200);
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message
+        });
+      }
+      return ApiResponse.badRequest(res, error.message);
+    }
+  }
+
   async deleteSale(req, res, next) {
     try {
       const { id } = req.params;
@@ -122,6 +145,19 @@ class SalesController {
 
       const sale = await salesService.deleteSale(id);
       return ApiResponse.success(res, 'Sale deleted successfully', sale, 200);
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return ApiResponse.notFound(res, error.message);
+      }
+      return ApiResponse.badRequest(res, error.message);
+    }
+  }
+
+  async generatePDISlip(req, res, next) {
+    try {
+      const { id } = req.params;
+      const pdiInfo = await salesService.generatePDISlip(id);
+      return ApiResponse.success(res, 'PDI Slip generated successfully', pdiInfo, 200);
     } catch (error) {
       if (error.statusCode === 404) {
         return ApiResponse.notFound(res, error.message);

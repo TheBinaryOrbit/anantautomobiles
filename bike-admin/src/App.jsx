@@ -20,6 +20,7 @@ import PurchaseDetailPage from './pages/PurchaseDetailPage';
 import SalesPage from './pages/SalesPage';
 import SalesCreatePage from './pages/SalesCreatePage';
 import SalesDetailPage from './pages/SalesDetailPage';
+import DiscountsPage from './pages/DiscountsPage';
 import RolesPage from './pages/RolesPage';
 import UsersPage from './pages/UsersPage';
 import Sidebar from './components/Sidebar';
@@ -82,6 +83,7 @@ function AppRoutes() {
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/sales/new" element={<SalesCreatePage />} />
         <Route path="/sales/:id" element={<SalesDetailPage />} />
+        <Route path="/discounts" element={<DiscountsPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/roles" element={<RolesPage />} />
       </Route>

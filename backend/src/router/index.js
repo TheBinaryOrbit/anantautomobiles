@@ -6,8 +6,10 @@ const accessoriesRouter = require('./accessoriesRouter');
 const customerRouter = require('./customerRouter');
 const supplierRouter = require('./supplierRouter');
 const salesRouter = require('./salesRouter');
+const purchaseRouter = require('./purchaseRouter');
 const roleRouter = require('./roleRouter');
 const permissionRouter = require('./permissionRouter');
+const discountRouter = require('./discountRouter');
 
 const router = express.Router();
 
@@ -22,7 +24,9 @@ router.use('/accessories', accessoriesRouter);
 router.use('/customers', customerRouter);
 router.use('/suppliers', supplierRouter);
 router.use('/sales', salesRouter);
+router.use('/purchases', purchaseRouter);
 router.use('/roles', roleRouter);
 router.use('/permissions', permissionRouter);
+router.use('/discounts', discountRouter);
 
 module.exports = router;

@@ -1,17 +1,11 @@
 const prisma = require('../config/db');
 
 const VALID_BIKE_STATUSES = ['AVAILABLE', 'RESERVED', 'SOLD', 'IN_SERVICE'];
-const VALID_STOCK_TYPES = ['IN_STOCK', 'PRE_ORDER'];
 const VALID_MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 
 class BikeService {
-  getStockType(data, fallback = 'IN_STOCK') {
-    return VALID_STOCK_TYPES.includes(data?.stockType) ? data.stockType : fallback;
-  }
-
   validateCreateData(data) {
     const errors = [];
-    const stockType = this.getStockType(data);
 
     if (!data.modelId || data.modelId.trim() === '') {
       errors.push({ field: 'modelId', message: 'Model ID is required and cannot be empty' });
@@ -21,33 +15,23 @@ class BikeService {
       errors.push({ field: 'color', message: 'Color is required and cannot be empty' });
     }
 
-    if (!data.exShowroomPrice || data.exShowroomPrice <= 0) {
-      errors.push({ field: 'exShowroomPrice', message: 'Ex-Showroom Price must be a positive number' });
+    if (!data.engineNumber || data.engineNumber.trim() === '') {
+      errors.push({ field: 'engineNumber', message: 'Engine Number is required and cannot be empty' });
     }
 
-    if (stockType === 'IN_STOCK') {
-      if (!data.engineNumber || data.engineNumber.trim() === '') {
-        errors.push({ field: 'engineNumber', message: 'Engine Number is required and cannot be empty' });
-      }
+    if (!data.chassisNumber || data.chassisNumber.trim() === '') {
+      errors.push({ field: 'chassisNumber', message: 'Chassis Number is required and cannot be empty' });
+    }
 
-      if (!data.chassisNumber || data.chassisNumber.trim() === '') {
-        errors.push({ field: 'chassisNumber', message: 'Chassis Number is required and cannot be empty' });
-      }
+    if (!data.manufactureMonth || !VALID_MONTHS.includes(data.manufactureMonth)) {
+      errors.push({
+        field: 'manufactureMonth',
+        message: `Manufacture Month must be one of: ${VALID_MONTHS.join(', ')}`,
+      });
+    }
 
-      if (!data.manufactureMonth || !VALID_MONTHS.includes(data.manufactureMonth)) {
-        errors.push({
-          field: 'manufactureMonth',
-          message: `Manufacture Month must be one of: ${VALID_MONTHS.join(', ')}`,
-        });
-      }
-
-      if (!data.manufactureYear || typeof data.manufactureYear !== 'number' || data.manufactureYear < 1900) {
-        errors.push({ field: 'manufactureYear', message: 'Manufacture Year must be a valid year (>= 1900)' });
-      }
-
-      if (!data.purchasePrice || data.purchasePrice <= 0) {
-        errors.push({ field: 'purchasePrice', message: 'Purchase Price must be a positive number' });
-      }
+    if (!data.manufactureYear || typeof data.manufactureYear !== 'number' || data.manufactureYear < 1900) {
+      errors.push({ field: 'manufactureYear', message: 'Manufacture Year must be a valid year (>= 1900)' });
     }
 
     return errors;
@@ -74,19 +58,15 @@ class BikeService {
 
       const bike = await prisma.bike.create({
         data: {
-          stockType: this.getStockType(data),
-          engineNumber: this.getStockType(data) === 'PRE_ORDER' ? null : data.engineNumber,
-          chassisNumber: this.getStockType(data) === 'PRE_ORDER' ? null : data.chassisNumber,
+          engineNumber: data.engineNumber,
+          chassisNumber: data.chassisNumber,
           modelId: data.modelId,
           color: data.color,
           status: data.status || 'AVAILABLE',
-          manufactureYear: this.getStockType(data) === 'PRE_ORDER' ? null : data.manufactureYear,
-          manufactureMonth: this.getStockType(data) === 'PRE_ORDER' ? null : data.manufactureMonth,
+          manufactureYear: data.manufactureYear,
+          manufactureMonth: data.manufactureMonth,
           registrationNumber: data.registrationNumber || null,
-          purchasePrice: this.getStockType(data) === 'PRE_ORDER' ? null : +(data.purchasePrice) || null,
-          purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
-          supplierId: data.supplierId || null,
-          exShowroomPrice: +(data.exShowroomPrice) || null,
+          purchaseId: data.purchaseId || null,
         },
         include: { model: true },
       });
@@ -104,11 +84,6 @@ class BikeService {
   }
 
   async updateBike(id, data) {
-    const validationErrors = this.validateCreateData(data);
-    if (validationErrors.length > 0) {
-      throw { validationErrors, message: 'Validation failed' };
-    }
-
     try {
       if (data.modelId) {
         const model = await prisma.bikeModel.findUnique({
@@ -126,13 +101,16 @@ class BikeService {
       const bike = await prisma.bike.update({
         where: { id },
         data: {
-          ...data,
-          stockType: this.getStockType(data),
-          engineNumber: this.getStockType(data) === 'PRE_ORDER' ? null : data.engineNumber,
-          chassisNumber: this.getStockType(data) === 'PRE_ORDER' ? null : data.chassisNumber,
-          manufactureYear: this.getStockType(data) === 'PRE_ORDER' ? null : data.manufactureYear,
-          manufactureMonth: this.getStockType(data) === 'PRE_ORDER' ? null : data.manufactureMonth,
-          purchasePrice: this.getStockType(data) === 'PRE_ORDER' ? null : data.purchasePrice,
+          engineNumber: data.engineNumber,
+          chassisNumber: data.chassisNumber,
+          modelId: data.modelId,
+          color: data.color,
+          status: data.status,
+          manufactureYear: data.manufactureYear,
+          manufactureMonth: data.manufactureMonth,
+          registrationNumber: data.registrationNumber !== undefined ? data.registrationNumber : undefined,
+          isRcArrived: data.isRcArrived !== undefined ? data.isRcArrived : undefined,
+          isNumberPlateReady: data.isNumberPlateReady !== undefined ? data.isNumberPlateReady : undefined,
         },
         include: { model: true },
       });

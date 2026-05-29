@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Download, ArrowLeft, Edit2, Save, X, Eye } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { salesApi } from '../api/services';
+import { salesApi, bikesApi } from '../api/services';
 import { fmtINR, STATIC_BASE } from '../utils/constants';
-import { Button, Modal } from '../components/ui';
+import { Button, Modal, Select, Field } from '../components/ui';
 
 export default function SalesDetailPage() {
   const { id } = useParams();
@@ -15,10 +15,22 @@ export default function SalesDetailPage() {
   const [pendingAmount, setPendingAmount] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(false);
+  const [pdiModal, setPdiModal] = useState(false);
+  const [pdiUrl, setPdiUrl] = useState(null);
+  const [availableBikes, setAvailableBikes] = useState([]);
+  const [assigningBike, setAssigningBike] = useState(null); // { itemId, modelId, color }
+  const [selectedBikeId, setSelectedBikeId] = useState('');
+  const [bikeSearch, setBikeSearch] = useState('');
 
   useEffect(() => {
     fetchSaleDetails();
   }, [id]);
+
+  useEffect(() => {
+    if (assigningBike) {
+      fetchAvailableBikes(assigningBike.modelId, assigningBike.color);
+    }
+  }, [assigningBike]);
 
   const fetchSaleDetails = async () => {
     try {
@@ -33,6 +45,36 @@ export default function SalesDetailPage() {
       navigate('/sales');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableBikes = async (modelId, color) => {
+    try {
+      const resp = await bikesApi.getAll();
+      
+      const all = resp.data || resp;
+      console.log(all.filter(b => b.status === 'AVAILABLE' && b.modelId === modelId ));
+      setAvailableBikes(all.filter(b => b.status === 'AVAILABLE' && b.modelId === modelId ));
+    } catch (err) {
+      toast.error('Failed to fetch available bikes');
+    }
+  };
+
+  const filteredBikes = availableBikes.filter(b => 
+    b.chassisNumber.toLowerCase().includes(bikeSearch.toLowerCase()) || 
+    b.engineNumber.toLowerCase().includes(bikeSearch.toLowerCase())
+  );
+
+  const handleAssignBike = async () => {
+    if (!selectedBikeId) return;
+    try {
+      await salesApi.assignBike(assigningBike.itemId, selectedBikeId);
+      toast.success('Bike assigned and Challan updated');
+      setAssigningBike(null);
+      setSelectedBikeId('');
+      fetchSaleDetails();
+    } catch (err) {
+      toast.error(err.message || 'Failed to assign bike');
     }
   };
 
@@ -90,6 +132,20 @@ export default function SalesDetailPage() {
     }
   };
 
+  const handleGeneratePDISlip = async () => {
+    try {
+      setGenerating(true);
+      const resp = await salesApi.generatePDISlip(id);
+      setPdiUrl(resp.data?.url || resp.url);
+      setPdiModal(true);
+      toast.success('PDI Slip generated');
+    } catch (err) {
+      toast.error('Failed to generate PDI slip');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
@@ -107,6 +163,7 @@ export default function SalesDetailPage() {
   }
 
   const statusBgColor = {
+    PDI: '#e0f2fe',
     PENDING: 'var(--warning-bg)',
     PAID: 'var(--success-bg)',
     CONFIRMED: 'var(--success-bg)',
@@ -114,6 +171,7 @@ export default function SalesDetailPage() {
   };
 
   const statusTextColor = {
+    PDI: '#0369a1',
     PENDING: 'var(--warning-fg)',
     PAID: 'var(--success-fg)',
     CONFIRMED: 'var(--success-fg)',
@@ -144,6 +202,32 @@ export default function SalesDetailPage() {
           Back to Sales
         </button>
         <div style={{ display: 'flex', gap: '10px' }}>
+          {sale.status === 'PDI' && (
+            <button
+              onClick={handleGeneratePDISlip}
+              disabled={generating}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#0ea5e9',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 500,
+                transition: 'all 0.2s ease',
+                fontFamily: 'var(--font-sans)',
+              }}
+              onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
+              onMouseLeave={(e) => (e.target.style.opacity = '1')}
+            >
+              <Download size={16} />
+              {generating ? 'Generating...' : 'PDI Slip'}
+            </button>
+          )}
           {sale.invoiceUrl && (
             <button
               onClick={() => setInvoiceModal(true)}
@@ -240,8 +324,8 @@ export default function SalesDetailPage() {
               <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.phone}</p>
             </div>
             <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Type</p>
-              <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.type}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Payment Opt</p>
+              <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.paymentType} {sale.financeCompany ? `(${sale.financeCompany})` : ''}</p>
             </div>
             {sale.customer.address && (
               <div style={{ gridColumn: '1/-1' }}>
@@ -278,20 +362,42 @@ export default function SalesDetailPage() {
               </thead>
               <tbody>
                 {sale.items.map((item, index) => {
-                  const itemName = item.itemType === 'BIKE' ? `${item.bike?.model?.brand || ''} ${item.bike?.model?.name || ''} (${item.bike?.color || ''})` : item.accessory?.name || 'Unknown Item';
+                  const modelName = item.model?.name || item.bike?.model?.name || 'Unknown Model';
+                  const color = item.color || item.bike?.color || '—';
+                  const isBike = item.itemType === 'BIKE';
+                  const needsBike = isBike && !item.bikeId;
+
                   return (
                     <tr
                       key={index}
                       style={{ borderBottom: '1px solid var(--border-secondary)' }}
-                      onMouseEnter={(e) => (e.target.parentElement.style.backgroundColor = 'var(--bg-secondary)')}
-                      onMouseLeave={(e) => (e.target.parentElement.style.backgroundColor = 'transparent')}
                     >
-                      <td style={{ padding: '12px', fontSize: 13 }}>{itemName}</td>
+                      <td style={{ padding: '12px', fontSize: 13 }}>
+                        <div style={{ fontWeight: 600 }}>{item.itemType === 'BIKE' ? modelName : item.accessory?.name}</div>
+                        {isBike && (
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                            Color: {color} {item.bikeId ? `| Chassis: ${item.bike.chassisNumber} | Engine: ${item.bike.engineNumber}` : '(Not yet assigned)'}
+                          </div>
+                        )}
+                        {needsBike && (
+                          <button 
+                            onClick={() => setAssigningBike({ itemId: item.id, modelId: item.modelId, color: item.color })}
+                            style={{ 
+                              marginTop: 8, padding: '4px 8px', borderRadius: 4, background: 'var(--brand-dark)', 
+                              color: 'white', border: 'none', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 
+                            }}
+                          >
+                            <Edit2 size={10} /> Finalize Challan (Select Bike)
+                          </button>
+                        )}
+                      </td>
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>₹{(item.unitPrice || 0).toFixed(2)}</td>
-                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{(item.discountAmount || 0) > 0 ? `-₹${((item.discountAmount || 0) * item.quantity).toFixed(2)}` : '₹0'}</td>
-                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{item.taxRate || 0}%</td>
-                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13, fontWeight: 600 }}>₹{(item.lineTotal || 0).toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{fmtINR(item.unitPrice || 0)}</td>
+                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{(item.discountAmount || 0) > 0 ? `-${fmtINR((item.discountAmount || 0) * item.quantity)}` : '₹0'}</td>
+                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>
+                        {item.cgstRate + item.sgstRate + item.igstRate + item.cessRate}%
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13, fontWeight: 600 }}>{fmtINR(item.lineTotal || 0)}</td>
                     </tr>
                   );
                 })}
@@ -316,12 +422,25 @@ export default function SalesDetailPage() {
             <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--danger-fg)' }}>-{fmtINR(sale?.discountAmount || 0)}</p>
           </div>
           <div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Tax</p>
-            <p style={{ fontSize: 16, fontWeight: 600 }}>{fmtINR(sale?.taxAmount || 0)}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Tax Breakdown</p>
+            <div style={{ fontSize: 13, display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px' }}>
+              <span>CGST:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.cgstRate / 100)), 0) || 0)}</span>
+              <span>SGST:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.sgstRate / 100)), 0) || 0)}</span>
+              <span>IGST:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.igstRate / 100)), 0) || 0)}</span>
+              <span>CESS:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.cessRate / 100)), 0) || 0)}</span>
+            </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Total</p>
             <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(sale?.totalAmount || 0)}</p>
+          </div>
+          <div>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Paid Amount</p>
+            <p style={{ fontSize: 16, fontWeight: 600, color: '#10b981' }}>{fmtINR(sale?.paidAmount || 0)}</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Pending Amount</p>
+            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--warning-fg)' }}>{fmtINR(sale?.pendingAmount || 0)}</p>
           </div>
         </div>
 
@@ -402,6 +521,110 @@ export default function SalesDetailPage() {
                 <Download size={14} /> Download Invoice
               </a>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* PDI Slip Modal */}
+      {pdiModal && (
+        <Modal title={`PDI Slip - ${sale.saleNumber || sale.id?.slice(0, 8)}…`} onClose={() => setPdiModal(false)} width={700}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, overflow: 'hidden', marginBottom: 20 }}>
+            <iframe
+              src={`${STATIC_BASE}/${pdiUrl}`}
+              title="PDI Slip"
+              style={{ width: '100%', height: '600px', border: 'none' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
+            <Button onClick={() => setPdiModal(false)} variant="secondary">Close</Button>
+            {pdiUrl && (
+              <a
+                href={`${STATIC_BASE}/${pdiUrl}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ background: '#0ea5e9', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-sans)' }}
+              >
+                <Download size={14} /> Download PDI Slip
+              </a>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Assign Bike Modal (Finalize Challan) */}
+      {assigningBike && (
+        <Modal title="Finalize Challan - Select Specific Vehicle" onClose={() => setAssigningBike(null)}>
+          <div style={{ padding: '4px 0 16px 0' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Select a specific bike from available stock for this model and color.
+            </p>
+            
+            <Field label="Search by Chassis / Engine No">
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Type to search..."
+                  value={bikeSearch}
+                  onChange={(e) => setBikeSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-secondary)',
+                    fontSize: 13,
+                    fontFamily: 'var(--font-sans)',
+                    outline: 'none',
+                    marginBottom: 12
+                  }}
+                />
+              </div>
+            </Field>
+
+            <div style={{ 
+              maxHeight: 250, 
+              overflowY: 'auto', 
+              border: '1px solid var(--border-secondary)', 
+              borderRadius: 8,
+              background: 'var(--bg-primary)'
+            }}>
+              {filteredBikes.length > 0 ? (
+                filteredBikes.map(b => (
+                  <div
+                    key={b.id}
+                    onClick={() => setSelectedBikeId(b.id)}
+                    style={{
+                      padding: '12px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid var(--border-secondary)',
+                      backgroundColor: selectedBikeId === b.id ? 'var(--brand-light)' : 'transparent',
+                      transition: 'background 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{b.chassisNumber}</span>
+                      <span style={{ fontSize: 11, color: 'var(--brand-dark)', background: 'var(--brand-light)', padding: '2px 6px', borderRadius: 4 }}>In Stock</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                      Engine: {b.engineNumber}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                  {availableBikes.length === 0 ? 'No stock available for this model/color' : 'No matching results'}
+                </div>
+              )}
+            </div>
+
+            {availableBikes.length === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--danger-fg)', marginTop: 12, fontWeight: 500 }}>
+                ⚠️ No available stock matches this model and color! Please purchase stock first.
+              </p>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
+            <Button onClick={() => { setAssigningBike(null); setBikeSearch(''); setSelectedBikeId(''); }} variant="secondary">Cancel</Button>
+            <Button onClick={handleAssignBike} disabled={!selectedBikeId}>Finalize Challan</Button>
           </div>
         </Modal>
       )}

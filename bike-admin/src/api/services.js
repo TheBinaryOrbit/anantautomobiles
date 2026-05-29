@@ -55,6 +55,8 @@ export const salesApi = {
   getAll:            ()                    => api.get('/sales').then(r => r.data),
   getSale:           (id)                  => api.get(`/sales/${id}`).then(r => r.data),
   create:            (body)                => api.post('/sales/create', body).then(r => r.data),
+  generatePDISlip:   (id)                  => api.get(`/sales/${id}/pdi-slip`).then(r => r.data),
+  assignBike:        (itemId, bikeId)      => api.patch(`/sales/items/${itemId}/assign-bike`, { bikeId }).then(r => r.data),
   updateStatus:      (id, status)          => api.patch(`/sales/${id}/status`, { status }).then(r => r.data),
   updatePendingAmount: (id, pendingAmount) => api.patch(`/sales/${id}/pending`, { pendingAmount }).then(r => r.data),
   delete:            (id)                  => api.delete(`/sales/${id}`).then(r => r.data),
@@ -88,6 +90,16 @@ export const usersApi = {
 /* ── Permissions ── */
 export const permissionsApi = {
   getAll: () => api.get('/permissions').then(r => r.data),
+};
+
+/* ── Discounts ── */
+export const discountsApi = {
+  getAll:    ()         => api.get('/discounts').then(r => r.data),
+  getActive: ()         => api.get('/discounts/active').then(r => r.data),
+  getById:   (id)       => api.get(`/discounts/${id}`).then(r => r.data),
+  create:    (body)     => api.post('/discounts/create', body).then(r => r.data),
+  update:    (id, body) => api.put(`/discounts/${id}`, body).then(r => r.data),
+  remove:    (id)       => api.delete(`/discounts/${id}`).then(r => r.data),
 };
 
 /* ── Dashboard ── */

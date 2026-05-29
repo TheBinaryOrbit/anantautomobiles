@@ -10,10 +10,6 @@ class AccessoriesService {
       errors.push({ field: 'name', message: 'Name is required and cannot be empty' });
     }
 
-    if (!data.description || data.description.trim() === '') {
-      errors.push({ field: 'description', message: 'Description is required and cannot be empty' });
-    }
-
     if (!data.price || data.price <= 0) {
       // console.log('Price is missing or invalid:', data.price);
       errors.push({ field: 'price', message: 'Price must be a positive number' });
@@ -49,7 +45,7 @@ class AccessoriesService {
       const accessory = await prisma.accessories.create({
         data: {
           name: data.name,
-          description: data.description,
+          remark: data.remark || data.description || '',
           price: parseFloat(data.price),
           imageUrl,
           unit: data.unit.toUpperCase(),
@@ -86,15 +82,8 @@ class AccessoriesService {
       updateData.name = data.name;
     }
 
-    if (data.description) {
-      if (data.description.trim() === '') {
-        if (file) fs.unlinkSync(file.path);
-        throw {
-          field: 'description',
-          message: 'Description cannot be empty',
-        };
-      }
-      updateData.description = data.description;
+    if (data.remark !== undefined || data.description !== undefined) {
+      updateData.remark = data.remark !== undefined ? data.remark : data.description;
     }
 
     if (data.price !== undefined) {

@@ -9,7 +9,7 @@ import {
   Field, Input, Select, Button, Card, StatCard,
 } from '../components/ui';
 
-const EMPTY_FORM = { items: [], paymentType: 'Full', paymentMethod: 'CASH', pendingAmount: 0, notes: '' };
+const EMPTY_FORM = { items: [], paymentType: 'FULL_PAYMENT', paymentMethod: 'CASH', pendingAmount: 0, notes: '' };
 
 export default function SalesPage() {
   const navigate = useNavigate();
@@ -275,9 +275,14 @@ export default function SalesPage() {
             </Field>
             <Field label="Payment Type *">
               <Select value={form.paymentType} onChange={e => setF('paymentType', e.target.value)}>
-                {PAYMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {PAYMENT_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
               </Select>
             </Field>
+            {(form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') && (
+              <Field label="Finance Company">
+                <Input value={form.financeCompany || ''} onChange={e => setF('financeCompany', e.target.value)} placeholder="e.g. TATA CAPITAL" />
+              </Field>
+            )}
             <Field label="Payment Method *">
               <Select value={form.paymentMethod} onChange={e => setF('paymentMethod', e.target.value)}>
                 {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}

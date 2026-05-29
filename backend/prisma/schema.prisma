@@ -35,7 +35,7 @@ model BikeModel {
   brand       String
   category    String
   imageUrl    String
-  description String
+  remark      String?
 
   // optional fields for more detailed information about the bike model
   engineCapacity Int?
@@ -50,7 +50,12 @@ model BikeModel {
   insuranceCharges Float?
   otherCharges     Float?
   onRoadPrice      Float?
-  gstRate          Float?
+  
+  cgstRate Float @default(0)
+  sgstRate Float @default(0)
+  igstRate Float @default(0)
+  cessRate Float @default(0)
+  
   hsnCode          String?
 
   // deleted flag for soft deletes
@@ -59,7 +64,8 @@ model BikeModel {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bikes Bike[]
+  bikes     Bike[]
+  saleItems SaleItem[]
 
   @@map("bike_models")
 }
@@ -76,27 +82,18 @@ model Bike {
 
   manufactureYear    Int?
   manufactureMonth   Months?
-  registrationNumber String? @unique
-
-  purchasePrice Float? // cost to showroom
-  purchaseDate  DateTime?
-
-  exShowroomPrice Float?
+  registrationNumber String? @unique 
+  isRcArrived        Boolean @default(false)
+  isNumberPlateReady Boolean @default(false)
 
   model BikeModel @relation(fields: [modelId], references: [id])
-
-
-
 
   // deleted flag for soft deletes
   isDeleted Boolean @default(false)
 
-  // stockType
-  stockType StockType @default(IN_STOCK)
-
-  // supply chain relationships
-  supplierId String?
-  supplier   supplier? @relation(fields: [supplierId], references: [id])
+  // purchase relationship
+  purchaseId String?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -106,11 +103,32 @@ model Bike {
   @@map("bikes")
 }
 
+model Purchase {
+  id             String   @id @default(uuid())
+  purchaseNumber String?  @unique
+  supplierId     String
+  supplier       supplier @relation(fields: [supplierId], references: [id])
+
+  purchaseDate DateTime @default(now())
+  status       String   @default("COMPLETED")
+
+  // bikes added in this purchase
+  bikes Bike[]
+
+  notes     String?
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("purchases")
+}
+
 model accessories {
   id String @id @default(uuid())
 
   name        String
-  description String
+  remark      String?
   price       Float
   imageUrl    String
   unit        String // uppercase must be specified (e.g., "PIECE", "SET", "BOX")
@@ -143,10 +161,16 @@ model Sale {
   taxAmount      Float @default(0)
   totalAmount    Float
   pendingAmount  Float @default(0)
+  paidAmount     Float @default(0)
+
+  financeCompany String?
 
   isPaid        Boolean       @default(false)
   paymentType   paymentType
   paymentMethod paymentMethod
+
+  discountId String?
+  discount   Discount? @relation(fields: [discountId], references: [id])
 
   notes     String?
   invoiceUrl String? // URL to the generated invoice
@@ -160,6 +184,28 @@ model Sale {
   @@map("sales")
 }
 
+model Discount {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  type        DiscountType
+  value       Float
+  upToLimit   Float?
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+
+  @@map("discounts")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
 model SaleItem {
   id     String @id @default(uuid())
   saleId String
@@ -167,18 +213,34 @@ model SaleItem {
 
   itemType SaleItemType
 
-  // exactly one of these will be set
+  // for BIKE items, either specific bike or model/color during PDI
   bikeId String?
   bike   Bike?   @relation(fields: [bikeId], references: [id])
+
+  modelId String?
+  model   BikeModel? @relation(fields: [modelId], references: [id])
+  color   String?
 
   accessoryId String?
   accessory   accessories? @relation(fields: [accessoryId], references: [id])
 
   quantity       Int   @default(1) // always 1 for bikes
-  unitPrice      Float
+  unitPrice      Float // this will be exShowroomPrice
   discountAmount Float @default(0)
-  taxRate        Float @default(0)
-  lineTotal      Float // (unitPrice - discountAmount) * quantity * (1 + taxRate)
+  
+  // Tax breakdown
+  cgstRate Float @default(0)
+  sgstRate Float @default(0)
+  igstRate Float @default(0)
+  cessRate Float @default(0)
+  
+  // Extra charges
+  rtoCharges       Float @default(0)
+  insuranceCharges Float @default(0)
+  otherCharges     Float @default(0)
+
+  taxRate        Float @default(0) // total tax rate (%)
+  lineTotal      Float // (unitPrice - discountAmount) * quantity * (1 + taxRate) + rto + insurance + other
 
   notes String?
 
@@ -208,7 +270,7 @@ model supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bikes Bike[]
+  purchases Purchase[]
 
   @@map("suppliers")
 }
@@ -315,6 +377,7 @@ model UserRoleAssignment {
 }
 
 enum SaleStatus {
+  PDI
   PENDING // payment not yet received
   CONFIRMED // payment received
   DELIVERED // bike/items handed over
@@ -358,10 +421,11 @@ enum Months {
 }
 
 enum paymentType {
-  Full
-  FULL_AND_PENDING
+  FULL_PAYMENT
+  PARTIAL_PAYMENT_AND_PENDING
+  PARTIAL_PAYMENT_AND_PENDING_AND_FINANCE
   DOWN_PAYMENT_AND_FINANCE
-  DOWN_PAYMENT_AND_FINANCE_AND_PENDING
+  FULL_FINANCE
   OTHER
 }
 
@@ -372,11 +436,6 @@ enum paymentMethod {
   UPI
   CHEQUE
   NET_BANKING
+  FINANCE
   OTHER
-}
-
-
-enum StockType {
-  IN_STOCK
-  PRE_ORDER
 }

@@ -6,65 +6,50 @@ class BikeModelService {
   validateCreateData(data, file) {
     const errors = [];
 
-    if (!data.name || data.name.trim() === '') {
-      errors.push({ field: 'name', message: 'Name is required and cannot be empty' });
-    }
+    const mandatoryFields = [
+      { field: 'name', label: 'Name' },
+      { field: 'brand', label: 'Brand' },
+      { field: 'category', label: 'Category' },
+      { field: 'fuelType', label: 'Fuel Type' },
+      { field: 'engineCapacity', label: 'Engine Capacity' },
+      { field: 'launchYear', label: 'Launch Year' },
+      { field: 'mileage', label: 'Mileage' },
+      { field: 'exShowroomPrice', label: 'Ex-Showroom Price' },
+      { field: 'rtoCharges', label: 'RTO Charges' },
+      { field: 'insuranceCharges', label: 'Insurance Charges' },
+      { field: 'otherCharges', label: 'Other Charges' },
+      { field: 'onRoadPrice', label: 'On-Road Price' },
+      { field: 'cgstRate', label: 'CGST' },
+      { field: 'sgstRate', label: 'SGST' },
+      { field: 'igstRate', label: 'IGST' },
+      { field: 'cessRate', label: 'Cess' },
+      { field: 'hsnCode', label: 'HSN Code' },
+    ];
 
-    if (!data.brand || data.brand.trim() === '') {
-      errors.push({ field: 'brand', message: 'Brand is required and cannot be empty' });
-    }
-
-    if (!data.category || data.category.trim() === '') {
-      errors.push({ field: 'category', message: 'Category is required and cannot be empty' });
-    }
+    mandatoryFields.forEach(({ field, label }) => {
+      if (data[field] === undefined || data[field] === null || data[field].toString().trim() === '') {
+        errors.push({ field, message: `${label} is required` });
+      }
+    });
 
     if (!file) {
       errors.push({ field: 'imageUrl', message: 'Image file is required' });
     }
 
-    if (!data.description || data.description.trim() === '') {
-      errors.push({ field: 'description', message: 'Description is required and cannot be empty' });
-    }
-
-    // if (data.engineCapacity !== undefined && typeof data.engineCapacity !== 'number') {
-    //   errors.push({ field: 'engineCapacity', message: 'Engine Capacity must be a number' });
-    // }
-
-    // if (data.launchYear !== undefined && (typeof data.launchYear !== 'number' || data.launchYear < 1900)) {
-    //   errors.push({ field: 'launchYear', message: 'Launch Year must be a valid year (>= 1900)' });
-    // }
-
-    // if (data.mileage !== undefined && typeof data.mileage !== 'number') {
-    //   errors.push({ field: 'mileage', message: 'Mileage must be a number' });
-    // }
-
-    // if (data.weight !== undefined && typeof data.weight !== 'number') {
-    //   errors.push({ field: 'weight', message: 'Weight must be a number' });
-    // }
-
-    // if (data.exShowroomPrice !== undefined && typeof data.exShowroomPrice !== 'number') {
-    //   errors.push({ field: 'exShowroomPrice', message: 'Ex-Showroom Price must be a number' });
-    // }
-
-    // if (data.rtoCharges !== undefined && typeof data.rtoCharges !== 'number') {
-    //   errors.push({ field: 'rtoCharges', message: 'RTO Charges must be a number' });
-    // }
-
-    // if (data.insuranceCharges !== undefined && typeof data.insuranceCharges !== 'number') {
-    //   errors.push({ field: 'insuranceCharges', message: 'Insurance Charges must be a number' });
-    // }
-
-    // if (data.otherCharges !== undefined && typeof data.otherCharges !== 'number') {
-    //   errors.push({ field: 'otherCharges', message: 'Other Charges must be a number' });
-    // }
-
-    // if (data.onRoadPrice !== undefined && typeof data.onRoadPrice !== 'number') {
-    //   errors.push({ field: 'onRoadPrice', message: 'On-Road Price must be a number' });
-    // }
-
-    // if (data.gstRate !== undefined && typeof data.gstRate !== 'number') {
-    //   errors.push({ field: 'gstRate', message: 'GST Rate must be a number' });
-    // }
+    // Percentage validation (max 100)
+    const percentageFields = ['rtoCharges', 'cgstRate', 'sgstRate', 'igstRate', 'cessRate'];
+    percentageFields.forEach(field => {
+      if (data[field] !== undefined && data[field] !== null) {
+        const val = parseFloat(data[field]);
+        if (isNaN(val)) {
+          errors.push({ field, message: `${field} must be a number` });
+        } else if (val > 100) {
+          errors.push({ field, message: `${field} cannot exceed 100%` });
+        } else if (val < 0) {
+          errors.push({ field, message: `${field} cannot be negative` });
+        }
+      }
+    });
 
     return errors;
   }
@@ -87,7 +72,7 @@ class BikeModelService {
           brand: data.brand,
           category: data.category,
           imageUrl,
-          description: data.description,
+          remark: data.remark || data.description || null,
           engineCapacity: data.engineCapacity ? parseInt(data.engineCapacity) : null,
           fuelType: data.fuelType || null,
           launchYear: data.launchYear ? parseInt(data.launchYear) : null,
@@ -98,7 +83,10 @@ class BikeModelService {
           insuranceCharges: data.insuranceCharges ? parseFloat(data.insuranceCharges) : null,
           otherCharges: data.otherCharges ? parseFloat(data.otherCharges) : null,
           onRoadPrice: data.onRoadPrice ? parseFloat(data.onRoadPrice) : null,
-          gstRate: data.gstRate ? parseFloat(data.gstRate) : null,
+          cgstRate: data.cgstRate ? parseFloat(data.cgstRate) : 0,
+          sgstRate: data.sgstRate ? parseFloat(data.sgstRate) : 0,
+          igstRate: data.igstRate ? parseFloat(data.igstRate) : 0,
+          cessRate: data.cessRate ? parseFloat(data.cessRate) : 0,
           hsnCode: data.hsnCode || null,
         },
       });
@@ -132,7 +120,7 @@ class BikeModelService {
         name: data.name,
         brand: data.brand,
         category: data.category,
-        description: data.description,
+        remark: data.remark || data.description || null,
         engineCapacity: data.engineCapacity ? parseInt(data.engineCapacity) : null,
         fuelType: data.fuelType || null,
         launchYear: data.launchYear ? parseInt(data.launchYear) : null,
@@ -143,7 +131,10 @@ class BikeModelService {
         insuranceCharges: data.insuranceCharges ? parseFloat(data.insuranceCharges) : null,
         otherCharges: data.otherCharges ? parseFloat(data.otherCharges) : null,
         onRoadPrice: data.onRoadPrice ? parseFloat(data.onRoadPrice) : null,
-        gstRate: data.gstRate ? parseFloat(data.gstRate) : null,
+        cgstRate: data.cgstRate ? parseFloat(data.cgstRate) : 0,
+        sgstRate: data.sgstRate ? parseFloat(data.sgstRate) : 0,
+        igstRate: data.igstRate ? parseFloat(data.igstRate) : 0,
+        cessRate: data.cessRate ? parseFloat(data.cessRate) : 0,
         hsnCode: data.hsnCode || null,
       };
 
@@ -238,6 +229,7 @@ class BikeModelService {
     try {
       const bikeModels = await prisma.bikeModel.findMany({
         where: { isDeleted: false },
+        orderBy: { createdAt: 'desc' }
       });
 
       return bikeModels;

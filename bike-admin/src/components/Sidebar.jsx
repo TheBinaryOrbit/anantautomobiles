@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { path: '/suppliers',    label: 'Suppliers',    iconName: 'Building2' },
   { path: '/purchases',    label: 'Purchases',    iconName: 'Truck' },
   { path: '/sales',        label: 'Sales',        iconName: 'ShoppingCart' },
+  { path: '/discounts',    label: 'Discounts',    iconName: 'Tag' },
   { path: '/users',        label: 'Users',        iconName: 'User' },
   { path: '/roles',        label: 'Roles',        iconName: 'KeyRound' },
 ];
