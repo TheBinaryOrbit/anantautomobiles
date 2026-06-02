@@ -26,20 +26,29 @@ export const bikeModelsApi = {
 
 /* ── Accessories ── */
 export const accessoriesApi = {
-  getAll:       ()           => api.get('/accessories').then(r => r.data),
-  create:       (fd)         => api.post('/accessories/create', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
-  update:       (id, fd)     => api.put(`/accessories/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
-  remove:       (id)         => api.delete(`/accessories/${id}`).then(r => r.data),
-  updateStock:  (id, qty)    => api.patch(`/accessories/${id}/quantity`, { quantityInStock: qty }).then(r => r.data),
+  getAll:       ()        => api.get('/accessories').then(r => r.data),
+  create:       (fd)      => api.post('/accessories/create', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
+  update:       (id, fd)  => api.put(`/accessories/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data),
+  remove:       (id)      => api.delete(`/accessories/${id}`).then(r => r.data),
+  updateStock:  (id, qty) => api.patch(`/accessories/${id}/quantity`, { quantityInStock: qty }).then(r => r.data),
 };
 
 /* ── Customers ── */
 export const customersApi = {
-  getAll:   ()          => api.get('/customers').then(r => r.data),
-  create:   (body)      => api.post('/customers/create', body).then(r => r.data),
-  update:   (id, body)  => api.put(`/customers/${id}`, body).then(r => r.data),
-  remove:   (id)        => api.delete(`/customers/${id}`).then(r => r.data),
-  search:   (q)         => api.get('/customers/search', { params: { q } }).then(r => r.data),
+  getAll:   ()        => api.get('/customers').then(r => r.data),
+  create:   (body)    => api.post('/customers/create', body).then(r => r.data),
+  update:   (id, body)=> api.put(`/customers/${id}`, body).then(r => r.data),
+  remove:   (id)      => api.delete(`/customers/${id}`).then(r => r.data),
+  search:   (q)       => api.get('/customers/search', { params: { q } }).then(r => r.data),
+};
+
+/* ── Exchange Bikes ── */
+export const exchangeBikesApi = {
+  getAll:   ()        => api.get('/exchange-bikes').then(r => r.data),
+  getById:  (id)      => api.get(`/exchange-bikes/${id}`).then(r => r.data),
+  create:   (body)    => api.post('/exchange-bikes/create', body).then(r => r.data),
+  update:   (id, body)=> api.put(`/exchange-bikes/${id}`, body).then(r => r.data),
+  remove:   (id)      => api.delete(`/exchange-bikes/${id}`).then(r => r.data),
 };
 
 /* ── Suppliers ── */
@@ -52,14 +61,14 @@ export const suppliersApi = {
 
 /* ── Sales ── */
 export const salesApi = {
-  getAll:            ()                    => api.get('/sales').then(r => r.data),
-  getSale:           (id)                  => api.get(`/sales/${id}`).then(r => r.data),
-  create:            (body)                => api.post('/sales/create', body).then(r => r.data),
-  generatePDISlip:   (id)                  => api.get(`/sales/${id}/pdi-slip`).then(r => r.data),
-  assignBike:        (itemId, bikeId)      => api.patch(`/sales/items/${itemId}/assign-bike`, { bikeId }).then(r => r.data),
-  updateStatus:      (id, status)          => api.patch(`/sales/${id}/status`, { status }).then(r => r.data),
-  updatePendingAmount: (id, pendingAmount) => api.patch(`/sales/${id}/pending`, { pendingAmount }).then(r => r.data),
-  delete:            (id)                  => api.delete(`/sales/${id}`).then(r => r.data),
+  getAll:              ()                    => api.get('/sales').then(r => r.data),
+  getSale:             (id)                  => api.get(`/sales/${id}`).then(r => r.data),
+  create:              (body)                => api.post('/sales/create', body).then(r => r.data),
+  generatePDISlip:     (id)                  => api.get(`/sales/${id}/pdi-slip`).then(r => r.data),
+  assignBike:          (itemId, bikeId)      => api.patch(`/sales/items/${itemId}/assign-bike`, { bikeId }).then(r => r.data),
+  updateStatus:        (id, status)          => api.patch(`/sales/${id}/status`, { status }).then(r => r.data),
+  updatePendingAmount: (id, pendingAmount)   => api.patch(`/sales/${id}/pending`, { pendingAmount }).then(r => r.data),
+  delete:              (id)                  => api.delete(`/sales/${id}`).then(r => r.data),
 };
 
 /* ── Purchases ── */
@@ -72,19 +81,19 @@ export const purchasesApi = {
 
 /* ── Roles ── */
 export const rolesApi = {
-  getAll:           ()                    => api.get('/roles').then(r => r.data),
-  create:           (body)                => api.post('/roles/create', body).then(r => r.data),
-  update:           (id, body)            => api.put(`/roles/${id}`, body).then(r => r.data),
-  assignPermissions:(id, permissionIds)   => api.post(`/roles/${id}/assign-permissions`, { permissionIds }).then(r => r.data),
+  getAll:            ()                 => api.get('/roles').then(r => r.data),
+  create:            (body)             => api.post('/roles/create', body).then(r => r.data),
+  update:            (id, body)         => api.put(`/roles/${id}`, body).then(r => r.data),
+  assignPermissions: (id, permissionIds)=> api.post(`/roles/${id}/assign-permissions`, { permissionIds }).then(r => r.data),
 };
 
 /* ── Users ── */
 export const usersApi = {
-  getAll:       ()          => api.get('/users').then(r => r.data),
-  create:       (body)      => api.post('/users/create', body).then(r => r.data),
-  update:       (id, body)  => api.put(`/users/${id}`, body).then(r => r.data),
-  remove:       (id)        => api.delete(`/users/${id}`).then(r => r.data),
-  assignRoles:  (id, roleIds) => api.post(`/users/${id}/assign-roles`, { roleIds }).then(r => r.data),
+  getAll:      ()         => api.get('/users').then(r => r.data),
+  create:      (body)     => api.post('/users/create', body).then(r => r.data),
+  update:      (id, body) => api.put(`/users/${id}`, body).then(r => r.data),
+  remove:      (id)       => api.delete(`/users/${id}`).then(r => r.data),
+  assignRoles: (id, roleIds)=> api.post(`/users/${id}/assign-roles`, { roleIds }).then(r => r.data),
 };
 
 /* ── Permissions ── */
@@ -118,4 +127,12 @@ export const dashboardApi = {
       sales:       sa.data?.data || [],
       accessories: a.data?.data  || [],
     })),
+};
+
+/* ── Inquiries ── */
+export const inquiriesApi = {
+  submitService:      (body) => api.post('/inquiries/service', body).then(r => r.data),
+  submitSales:        (body) => api.post('/inquiries/sales', body).then(r => r.data),
+  getServiceInquiries: ()     => api.get('/inquiries/service').then(r => r.data),
+  getSalesInquiries:   ()     => api.get('/inquiries/sales').then(r => r.data),
 };

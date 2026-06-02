@@ -9,7 +9,16 @@ import {
   Field, Input, Select, Button, Card, StatCard,
 } from '../components/ui';
 
-const EMPTY_FORM = { items: [], paymentType: 'FULL_PAYMENT', paymentMethod: 'CASH', pendingAmount: 0, notes: '' };
+const EMPTY_FORM = { 
+  items: [], 
+  paymentType: 'FULL_PAYMENT', 
+  paymentMethod: 'CASH', 
+  pendingAmount: 0, 
+  notes: '', 
+  financeCompany: '',
+  financeExecutiveName: '',
+  financeExecutivePhone: ''
+};
 
 export default function SalesPage() {
   const navigate = useNavigate();
@@ -81,18 +90,19 @@ export default function SalesPage() {
   };
 
   const createNewCustomer = async () => {
-    if (!newCust.name || !newCust.email || !newCust.phone) {
-      toast.error('Name, email, and phone are required');
+    if (!newCust.name || !newCust.email || !newCust.phone || !newCust.addressLine1 || !newCust.city || !newCust.state || !newCust.postalCode || !newCust.dob) {
+      toast.error('All required fields (*) must be filled');
       return;
     }
+    if (!newCust.aadhaarNumber && !newCust.panNumber) {
+      toast.error('At least one identity document (Aadhaar or PAN) is required');
+      return;
+    }
+
     setCustLoading(true);
     try {
       const res = await customersApi.create({
         ...newCust,
-        addressLine1: 'N/A',
-        city: 'N/A',
-        state: 'N/A',
-        postalCode: '000000',
         country: 'India',
       });
       const createdCust = res.data;
@@ -139,7 +149,8 @@ export default function SalesPage() {
   const total = (form.items || []).reduce((sum, it) => {
     const price = (parseFloat(it.unitPrice) || 0) - (parseFloat(it.discountAmount) || 0);
     const qty   = parseInt(it.quantity) || 1;
-    return sum + price * qty * (1 + (parseFloat(it.taxRate) || 0) / 100);
+    // Price is already inclusive of tax and no extras are added.
+    return sum + price * qty;
   }, 0);
 
   const save = async () => {
@@ -153,6 +164,9 @@ export default function SalesPage() {
         paymentMethod: form.paymentMethod,
         pendingAmount: parseFloat(form.pendingAmount) || 0,
         notes: form.notes || '',
+        financeCompany: (form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') ? form.financeCompany : null,
+        financeExecutiveName: (form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') ? form.financeExecutiveName : null,
+        financeExecutivePhone: (form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') ? form.financeExecutivePhone : null,
         items: form.items.map(it => ({
           itemType: it.itemType,
           bikeId: it.itemType === 'BIKE' ? it.bikeId : null,
@@ -193,12 +207,12 @@ export default function SalesPage() {
     { key: 'paymentMethod', label: 'Payment' },
     { key: 'isPaid',        label: 'Paid',     render: r => r.isPaid ? <span style={{ color: '#27500A', fontSize: 12, fontWeight: 600 }}>✓ Paid</span> : <span style={{ color: '#A32D2D', fontSize: 12, fontWeight: 600 }}>Pending</span> },
     { key: 'saleDate',      label: 'Date',     render: r => r.saleDate ? new Date(r.saleDate).toLocaleDateString('en-IN') : '—' },
-    { key: 'invoiceUrl',    label: 'Invoice',  render: r => r.invoiceUrl ? <button onClick={() => setInvoiceModal(r)} style={{ background: '#E8F4F8', color: '#0066CC', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.target.style.background = '#D0E8F2'; e.target.style.color = '#0052A3'; }} onMouseLeave={(e) => { e.target.style.background = '#E8F4F8'; e.target.style.color = '#0066CC'; }}>View Invoice</button> : <span style={{ color: '#999', fontSize: 12 }}>—</span> },
+    { key: 'invoiceUrl',    label: 'Challan',  render: r => r.invoiceUrl ? <button onClick={() => setInvoiceModal(r)} style={{ background: '#E8F4F8', color: '#0066CC', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.target.style.background = '#D0E8F2'; e.target.style.color = '#0052A3'; }} onMouseLeave={(e) => { e.target.style.background = '#E8F4F8'; e.target.style.color = '#0066CC'; }}>View Challan</button> : <span style={{ color: '#999', fontSize: 12 }}>—</span> },
   ];
 
   return (
     <div>
-      <PageHeader icon={ShoppingCart} title="Sales" subtitle="Manage sales orders and invoices" onAdd={() => navigate('/sales/new')} addLabel="New Sale" />
+      <PageHeader icon={ShoppingCart} title="Sales" subtitle="Manage sales orders and challans" onAdd={() => navigate('/sales/new')} addLabel="New Sale" />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px,1fr))', gap: 10, marginBottom: '1.25rem' }}>
         {SALE_STATUSES.map(s => (
@@ -279,9 +293,17 @@ export default function SalesPage() {
               </Select>
             </Field>
             {(form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') && (
-              <Field label="Finance Company">
-                <Input value={form.financeCompany || ''} onChange={e => setF('financeCompany', e.target.value)} placeholder="e.g. TATA CAPITAL" />
-              </Field>
+              <>
+                <Field label="Finance Company">
+                  <Input value={form.financeCompany || ''} onChange={e => setF('financeCompany', e.target.value)} placeholder="e.g. TATA CAPITAL" />
+                </Field>
+                <Field label="Executive Name">
+                  <Input value={form.financeExecutiveName || ''} onChange={e => setF('financeExecutiveName', e.target.value)} placeholder="Executive Name" />
+                </Field>
+                <Field label="Executive Phone">
+                  <Input value={form.financeExecutivePhone || ''} onChange={e => setF('financeExecutivePhone', e.target.value)} placeholder="Executive Phone" />
+                </Field>
+              </>
             )}
             <Field label="Payment Method *">
               <Select value={form.paymentMethod} onChange={e => setF('paymentMethod', e.target.value)}>
@@ -389,7 +411,7 @@ export default function SalesPage() {
 
       {/* Customer Search & Create Modal */}
       {custModal && (
-        <Modal title="Select or Create Customer" onClose={() => setCustModal(false)} width={420}>
+        <Modal title="Select or Create Customer" onClose={() => setCustModal(false)} width={600}>
           <div style={{ marginBottom: 14 }}>
             <Input
               placeholder="Search by name, phone, or email…"
@@ -430,19 +452,65 @@ export default function SalesPage() {
           )}
 
           <div style={{ borderTop: '0.5px solid var(--border-secondary)', paddingTop: 12, marginTop: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Or Create New:</div>
-            <Field label="Name *">
-              <Input placeholder="Full Name" value={newCust.name || ''} onChange={e => setNewCust(n => ({ ...n, name: e.target.value }))} />
-            </Field>
-            <Field label="Email *">
-              <Input placeholder="email@example.com" value={newCust.email || ''} onChange={e => setNewCust(n => ({ ...n, email: e.target.value }))} />
-            </Field>
-            <Field label="Phone *">
-              <Input placeholder="Phone Number" value={newCust.phone || ''} onChange={e => setNewCust(n => ({ ...n, phone: e.target.value }))} />
-            </Field>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
-              <Button variant="secondary" onClick={() => setCustModal(false)}>Close</Button>
-              <Button onClick={createNewCustomer} disabled={custLoading}>{custLoading ? 'Creating…' : 'Create & Select'}</Button>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--brand-dark)', marginBottom: 16 }}>Or Create New Customer:</div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 20px' }}>
+              <Field label="Full Name *">
+                <Input placeholder="Full Name" value={newCust.name || ''} onChange={e => setNewCust(n => ({ ...n, name: e.target.value }))} />
+              </Field>
+              <Field label="Email *">
+                <Input placeholder="email@example.com" value={newCust.email || ''} onChange={e => setNewCust(n => ({ ...n, email: e.target.value }))} />
+              </Field>
+              <Field label="Phone *">
+                <Input placeholder="Phone Number" value={newCust.phone || ''} onChange={e => setNewCust(n => ({ ...n, phone: e.target.value }))} />
+              </Field>
+              <Field label="Date of Birth *">
+                <Input type="date" value={newCust.dob || ''} onChange={e => setNewCust(n => ({ ...n, dob: e.target.value }))} />
+              </Field>
+              
+              <div style={{ gridColumn: '1/-1' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>Address Details</p>
+              </div>
+
+              <div style={{ gridColumn: '1/-1' }}>
+                <Field label="Address Line 1 *">
+                  <Input placeholder="Street, Sector, Area" value={newCust.addressLine1 || ''} onChange={e => setNewCust(n => ({ ...n, addressLine1: e.target.value }))} />
+                </Field>
+              </div>
+
+              <Field label="City *">
+                <Input placeholder="City" value={newCust.city || ''} onChange={e => setNewCust(n => ({ ...n, city: e.target.value }))} />
+              </Field>
+              <Field label="State *">
+                <Input placeholder="State" value={newCust.state || ''} onChange={e => setNewCust(n => ({ ...n, state: e.target.value }))} />
+              </Field>
+              <Field label="Postal Code *">
+                <Input placeholder="6-digit ZIP" value={newCust.postalCode || ''} onChange={e => setNewCust(n => ({ ...n, postalCode: e.target.value }))} />
+              </Field>
+              
+              <div style={{ gridColumn: '1/-1' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 8, marginBottom: 8, textTransform: 'uppercase' }}>Documents (At least one required)</p>
+              </div>
+
+              <Field label="Aadhaar Number">
+                <Input placeholder="12-digit Aadhaar" value={newCust.aadhaarNumber || ''} onChange={e => setNewCust(n => ({ ...n, aadhaarNumber: e.target.value }))} />
+              </Field>
+              <Field label="PAN Number">
+                <Input placeholder="10-digit PAN" value={newCust.panNumber || ''} onChange={e => setNewCust(n => ({ ...n, panNumber: e.target.value }))} />
+              </Field>
+
+              <div style={{ gridColumn: '1/-1' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 8, marginBottom: 8, textTransform: 'uppercase' }}>Life Events (Optional)</p>
+              </div>
+
+              <Field label="Marriage Anniversary">
+                <Input type="date" value={newCust.marriageAnniversary || ''} onChange={e => setNewCust(n => ({ ...n, marriageAnniversary: e.target.value }))} />
+              </Field>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '0.5px solid var(--border-secondary)' }}>
+              <Button variant="secondary" onClick={() => setCustModal(false)}>Cancel</Button>
+              <Button onClick={createNewCustomer} disabled={custLoading}>{custLoading ? 'Saving…' : 'Create & Select'}</Button>
             </div>
           </div>
         </Modal>
@@ -450,7 +518,7 @@ export default function SalesPage() {
 
       {/* Invoice View Modal */}
       {invoiceModal && (
-        <Modal title={`Invoice #${invoiceModal.saleNumber || invoiceModal.id?.slice(0, 8)}`} onClose={() => setInvoiceModal(null)} width={600}>
+        <Modal title={`Challan #${invoiceModal.saleNumber || invoiceModal.id?.slice(0, 8)}`} onClose={() => setInvoiceModal(null)} width={600}>
           <div style={{ marginBottom: 20 }}>
             {/* Invoice Header Info */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
@@ -497,23 +565,53 @@ export default function SalesPage() {
               </div>
             )}
 
+            {/* Finance Info */}
+            {invoiceModal.financeCompany && (
+              <div style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Finance Details</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Company</p>
+                    <p style={{ fontSize: 13, fontWeight: 500 }}>{invoiceModal.financeCompany}</p>
+                  </div>
+                  {invoiceModal.financeExecutiveName && (
+                    <div>
+                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Executive Name</p>
+                      <p style={{ fontSize: 13, fontWeight: 500 }}>{invoiceModal.financeExecutiveName}</p>
+                    </div>
+                  )}
+                  {invoiceModal.financeExecutivePhone && (
+                    <div>
+                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Executive Phone</p>
+                      <p style={{ fontSize: 13, fontWeight: 500 }}>{invoiceModal.financeExecutivePhone}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Nominee Info */}
+            {invoiceModal.nomineeName && (
+              <div style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nominee Details</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Nominee Name</p>
+                    <p style={{ fontSize: 13, fontWeight: 500 }}>{invoiceModal.nomineeName}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Relation (Age)</p>
+                    <p style={{ fontSize: 13, fontWeight: 500 }}>{invoiceModal.nomineeRelation} {invoiceModal.nomineeAge ? `(${invoiceModal.nomineeAge}y)` : ''}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Amount Summary */}
             <div style={{ backgroundColor: 'var(--bg-secondary)', borderRadius: 8, padding: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border-secondary)' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Subtotal</span>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtINR(invoiceModal.subtotal)}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border-secondary)' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Discount</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#DC3545' }}>-{fmtINR(invoiceModal.discountAmount)}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border-secondary)' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Tax</span>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtINR(invoiceModal.taxAmount)}</span>
-              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>Total</span>
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#0066CC' }}>{fmtINR(invoiceModal.totalAmount)}</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Grand Total (Incl. Taxes)</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(invoiceModal.totalAmount)}</span>
               </div>
             </div>
 
@@ -546,7 +644,7 @@ export default function SalesPage() {
                   alignItems: 'center',
                 }}
               >
-                Download Invoice
+                Download Challan
               </a>
             )}
             <Button variant="secondary" onClick={() => setInvoiceModal(null)}>Close</Button>

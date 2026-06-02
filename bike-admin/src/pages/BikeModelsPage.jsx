@@ -32,6 +32,7 @@ export default function BikeModelsPage() {
     const q = search.toLowerCase();
     setFiltered(models.filter(m =>
       m.name?.toLowerCase().includes(q) ||
+      m.modelName?.toLowerCase().includes(q) ||
       m.brand?.toLowerCase().includes(q) ||
       m.category?.toLowerCase().includes(q)
     ));
@@ -84,10 +85,11 @@ export default function BikeModelsPage() {
         ? <img src={`${STATIC_BASE}${r.imageUrl}`} alt={r.name} style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', background: '#f0f0f0' }} onError={e => { e.target.style.display = 'none'; }} />
         : <div style={{ width: 36, height: 36, background: 'var(--brand-light)', borderRadius: 6 }} /> },
     { key: 'name',          label: 'Name' },
+    { key: 'modelName',     label: 'Model Name (Nickname)' },
     { key: 'brand',         label: 'Brand' },
     { key: 'category',      label: 'Category' },
     { key: 'engineCapacity',label: 'Engine', render: r => r.engineCapacity ? `${r.engineCapacity}cc` : '—' },
-    { key: 'onRoadPrice',   label: 'On-Road Price', render: r => fmtINR(r.onRoadPrice) },
+    { key: 'purchasePrice',  label: 'Purchase Price', render: r => fmtINR(r.purchasePrice) },
     { key: 'cgstRate',      label: 'CGST%', render: r => r.cgstRate ? `${r.cgstRate}%` : '0%' },
     { key: 'sgstRate',      label: 'SGST%', render: r => r.sgstRate ? `${r.sgstRate}%` : '0%' },
   ];
@@ -104,6 +106,7 @@ export default function BikeModelsPage() {
         <Modal title={modal.title} onClose={() => setModal(null)} width={680}>
           <FormGrid>
             <Field label="Name *"><Input value={form.name || ''} onChange={e => set('name', e.target.value)} /></Field>
+            <Field label="Model Name (Nickname) *"><Input value={form.modelName || ''} onChange={e => set('modelName', e.target.value)} /></Field>
             <Field label="Brand *"><Input value={form.brand || ''} onChange={e => set('brand', e.target.value)} /></Field>
             <Field label="Category *"><Input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="e.g. Commuter, Sports" /></Field>
             <Field label="Fuel Type *"><Input value={form.fuelType || ''} onChange={e => set('fuelType', e.target.value)} /></Field>
@@ -124,7 +127,7 @@ export default function BikeModelsPage() {
             <Field label="RTO Charges (%) *"><Input type="number" value={form.rtoCharges || ''} onChange={e => set('rtoCharges', e.target.value)} /></Field>
             <Field label="Insurance Charges *"><Input type="number" value={form.insuranceCharges || ''} onChange={e => set('insuranceCharges', e.target.value)} /></Field>
             <Field label="Other Charges *"><Input type="number" value={form.otherCharges || ''} onChange={e => set('otherCharges', e.target.value)} /></Field>
-            <Field label="On-Road Price *"><Input type="number" value={form.onRoadPrice || ''} onChange={e => set('onRoadPrice', e.target.value)} /></Field>
+            <Field label="Purchase Price *"><Input type="number" value={form.purchasePrice || ''} onChange={e => set('purchasePrice', e.target.value)} /></Field>
             <Field label="CGST Rate (%) *"><Input type="number" value={form.cgstRate || ''} onChange={e => set('cgstRate', e.target.value)} /></Field>
             <Field label="SGST Rate (%) *"><Input type="number" value={form.sgstRate || ''} onChange={e => set('sgstRate', e.target.value)} /></Field>
             <Field label="IGST Rate (%) *"><Input type="number" value={form.igstRate || ''} onChange={e => set('igstRate', e.target.value)} /></Field>

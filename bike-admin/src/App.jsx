@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NavigationProvider } from './context/NavigationContext'; // Added Import
 import useWindowSize from './hooks/useWindowSize.js';
 
 import LoginPage from './pages/LoginPage';
@@ -20,6 +21,13 @@ import PurchaseDetailPage from './pages/PurchaseDetailPage';
 import SalesPage from './pages/SalesPage';
 import SalesCreatePage from './pages/SalesCreatePage';
 import SalesDetailPage from './pages/SalesDetailPage';
+import ExchangeBikesListPage from './pages/ExchangeBikesListPage';
+import ExchangeBikeDetailPage from './pages/ExchangeBikeDetailPage';
+
+/* ── Inquiries List Components ── */
+import ServiceInquiryPage from './pages/ServiceInquiryPage.jsx'; 
+import SalesInquiryPage from './pages/SalesInquiryPage.jsx';
+
 import DiscountsPage from './pages/DiscountsPage';
 import RolesPage from './pages/RolesPage';
 import UsersPage from './pages/UsersPage';
@@ -31,7 +39,6 @@ import Home from './pages/Home.jsx';
 function AppShellLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isMobile } = useWindowSize();
-
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-secondary)' }}>
@@ -53,7 +60,7 @@ function AppShellLayout() {
 /* ── Route guards ── */
 function ProtectedLayout() {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <AppShellLayout /> : <Navigate to="/" replace/>;
+  return isAuthenticated ? <AppShellLayout /> : <Navigate to="/login" replace/>;
 }
 
 function AppRoutes() {
@@ -61,14 +68,15 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/home" element={<Home />} />
+      {/* Public Landing Fallback Redirect */}
+      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
 
       <Route
         path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
 
+      {/* Admin Guarded Internal Workspaces */}
       <Route element={<ProtectedLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/bikes" element={<BikesPage />} />
@@ -83,14 +91,21 @@ function AppRoutes() {
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/sales/new" element={<SalesCreatePage />} />
         <Route path="/sales/:id" element={<SalesDetailPage />} />
+        
+        <Route path="/exchange-bikes" element={<ExchangeBikesListPage />} />
+        <Route path="/exchange-bikes/:id" element={<ExchangeBikeDetailPage />} />
+        
         <Route path="/discounts" element={<DiscountsPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/roles" element={<RolesPage />} />
+        
+        <Route path="/inquire-service" element={<ServiceInquiryPage />} />
+        <Route path="/inquire-sales" element={<SalesInquiryPage />} />
       </Route>
 
       <Route
         path="*"
-        element={<Navigate to={isAuthenticated ? '/dashboard' : '/'} replace />}
+        element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}
       />
     </Routes>
   );
@@ -101,17 +116,19 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          pauseOnFocusLoss={false}
-          pauseOnHover
-          limit={4}
-        />
+        <NavigationProvider>
+          <AppRoutes />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnFocusLoss={false}
+            pauseOnHover
+            limit={4}
+          />
+        </NavigationProvider>
       </AuthProvider>
     </Router>
   );

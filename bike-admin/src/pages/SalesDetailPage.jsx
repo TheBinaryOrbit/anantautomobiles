@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Download, ArrowLeft, Edit2, Save, X, Eye } from 'lucide-react';
+import { Download, ArrowLeft, Edit2, Save, X, Eye, RefreshCw, FileText, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { salesApi, bikesApi } from '../api/services';
 import { fmtINR, STATIC_BASE } from '../utils/constants';
@@ -51,9 +51,7 @@ export default function SalesDetailPage() {
   const fetchAvailableBikes = async (modelId, color) => {
     try {
       const resp = await bikesApi.getAll();
-      
       const all = resp.data || resp;
-      console.log(all.filter(b => b.status === 'AVAILABLE' && b.modelId === modelId ));
       setAvailableBikes(all.filter(b => b.status === 'AVAILABLE' && b.modelId === modelId ));
     } catch (err) {
       toast.error('Failed to fetch available bikes');
@@ -195,8 +193,6 @@ export default function SalesDetailPage() {
             fontSize: '14px',
             fontWeight: 500,
           }}
-          onMouseEnter={(e) => (e.target.style.opacity = '0.7')}
-          onMouseLeave={(e) => (e.target.style.opacity = '1')}
         >
           <ArrowLeft size={18} />
           Back to Sales
@@ -221,8 +217,6 @@ export default function SalesDetailPage() {
                 transition: 'all 0.2s ease',
                 fontFamily: 'var(--font-sans)',
               }}
-              onMouseEnter={(e) => (e.target.style.opacity = '0.8')}
-              onMouseLeave={(e) => (e.target.style.opacity = '1')}
             >
               <Download size={16} />
               {generating ? 'Generating...' : 'PDI Slip'}
@@ -246,8 +240,6 @@ export default function SalesDetailPage() {
                 transition: 'all 0.2s ease',
                 fontFamily: 'var(--font-sans)',
               }}
-              onMouseEnter={(e) => (e.target.style.background = 'var(--brand-dark)', e.target.style.color = '#fff')}
-              onMouseLeave={(e) => (e.target.style.background = 'var(--brand-light)', e.target.style.color = 'var(--brand-dark)')}
             >
               <Eye size={16} />
               View Invoice
@@ -270,12 +262,6 @@ export default function SalesDetailPage() {
               fontWeight: 500,
               transition: 'all 0.2s ease',
               fontFamily: 'var(--font-sans)',
-            }}
-            onMouseEnter={(e) => {
-              if (sale.invoiceUrl) e.target.style.opacity = '0.8';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.opacity = '1';
             }}
           >
             <Download size={16} />
@@ -308,38 +294,140 @@ export default function SalesDetailPage() {
 
       {/* Customer Information */}
       {sale.customer && (
-        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24, marginBottom: 24 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Customer Information</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px,1fr))', gap: 16 }}>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Name</p>
-              <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.name}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Email</p>
-              <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.email}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Phone</p>
-              <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.phone}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Payment Opt</p>
-              <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.paymentType} {sale.financeCompany ? `(${sale.financeCompany})` : ''}</p>
-            </div>
-            {sale.customer.address && (
-              <div style={{ gridColumn: '1/-1' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Address</p>
-                <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
-                  {sale.customer.address.addressLine1}
-                  {sale.customer.address.addressLine2 && `, ${sale.customer.address.addressLine2}`}
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {sale.customer.address.city}, {sale.customer.address.state} {sale.customer.address.postalCode}
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{sale.customer.address.country}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+          <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Customer Information</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px,1fr))', gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Name</p>
+                <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.name}</p>
               </div>
-            )}
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Email</p>
+                <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.email || '—'}</p>
+              </div>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Phone</p>
+                <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.customer.phone}</p>
+              </div>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Payment Opt</p>
+                <p style={{ fontSize: 14, fontWeight: 500 }}>{sale.paymentType} {sale.financeCompany ? `(${sale.financeCompany})` : ''}</p>
+              </div>
+              {sale.customer.address && (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Address</p>
+                  <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+                    {sale.customer.address.addressLine1}
+                    {sale.customer.address.addressLine2 && `, ${sale.customer.address.addressLine2}`}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {sale.customer.address.city}, {sale.customer.address.state} {sale.customer.address.postalCode}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24 }}>
+            <div style={{ marginBottom: 24 }}>
+              <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Nominee & Finance</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Nominee Name</p>
+                  <p style={{ fontSize: 13, fontWeight: 500 }}>{sale.nomineeName || '—'}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Relation / Age</p>
+                  <p style={{ fontSize: 13, fontWeight: 500 }}>{sale.nomineeRelation || '—'} {sale.nomineeAge ? `(${sale.nomineeAge}y)` : ''}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>Finance Executive</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Executive Name</p>
+                  <p style={{ fontSize: 13, fontWeight: 500 }}>{sale.financeExecutiveName || '—'}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Contact Phone</p>
+                  <p style={{ fontSize: 13, fontWeight: 500 }}>{sale.financeExecutivePhone || '—'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Conditional Vehicle Exchange Module Data Card */}
+      {sale.exchange && (
+        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24, marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border-secondary)', paddingBottom: 10 }}>
+            <RefreshCw size={18} style={{ color: 'var(--brand-dark)' }} />
+            <h2 style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', margin: 0 }}>
+              Linked Vehicle Exchange Information
+            </h2>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 20 }}>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Vehicle Identity</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {sale.exchange.oldBikeBrand} {sale.exchange.oldBikeName}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Model Variant: {sale.exchange.oldBikeModel}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Mfg Year & Color</p>
+              <p style={{ fontSize: 13, fontWeight: 500 }}>Year: {sale.exchange.oldBikeYear}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Color: {sale.exchange.oldBikeColor}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Engine / Chassis Numbers</p>
+              <p style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-primary)' }}>Eng: {sale.exchange.oldBikeEngineNumber || '—'}</p>
+              <p style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-primary)' }}>Chas: {sale.exchange.oldBikeChassisNumber || '—'}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Valuation Credit</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(sale.exchange.exchangeValue || 0)}</p>
+            </div>
+          </div>
+
+          {sale.exchange.notes && (
+            <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 6, fontSize: 12, marginBottom: 20, border: '0.5px solid var(--border-secondary)' }}>
+              <strong>Evaluation Team Remarks:</strong> {sale.exchange.notes}
+            </div>
+          )}
+
+          {/* Verification Status List mapping */}
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 14, border: '0.5px solid var(--border-secondary)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FileText size={12} /> Legal Document Verification Checklist
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isOldRCAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
+                <CheckCircle size={14} fill={sale.exchange.isOldRCAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isOldRCAvailable ? '#fff' : 'currentColor'} />
+                Original RC Book Verified
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isNocAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
+                <CheckCircle size={14} fill={sale.exchange.isNocAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isNocAvailable ? '#fff' : 'currentColor'} />
+                RTO NOC Verified
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isOwnerDocumentAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
+                <CheckCircle size={14} fill={sale.exchange.isOwnerDocumentAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isOwnerDocumentAvailable ? '#fff' : 'currentColor'} />
+                Owner Identity Docs Copy
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isChallanAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
+                <CheckCircle size={14} fill={sale.exchange.isChallanAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isChallanAvailable ? '#fff' : 'currentColor'} />
+                Traffic Challan Clear Status
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isStatmentAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
+                <CheckCircle size={14} fill={sale.exchange.isStatmentAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isStatmentAvailable ? '#fff' : 'currentColor'} />
+                Hypothecation NOC Statement
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -354,10 +442,10 @@ export default function SalesDetailPage() {
                 <tr style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
                   <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Item</th>
                   <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Qty</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Unit Price</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Discount</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Tax</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Line Total</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Ex-Price</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Exchange Deduction Credit</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>GST</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Net Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -368,10 +456,7 @@ export default function SalesDetailPage() {
                   const needsBike = isBike && !item.bikeId;
 
                   return (
-                    <tr
-                      key={index}
-                      style={{ borderBottom: '1px solid var(--border-secondary)' }}
-                    >
+                    <tr key={index} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
                       <td style={{ padding: '12px', fontSize: 13 }}>
                         <div style={{ fontWeight: 600 }}>{item.itemType === 'BIKE' ? modelName : item.accessory?.name}</div>
                         {isBike && (
@@ -393,7 +478,12 @@ export default function SalesDetailPage() {
                       </td>
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{item.quantity}</td>
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{fmtINR(item.unitPrice || 0)}</td>
-                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{(item.discountAmount || 0) > 0 ? `-${fmtINR((item.discountAmount || 0) * item.quantity)}` : '₹0'}</td>
+                      
+                      {/* Interactive breakdown display of trade-in deduction values per ledger row */}
+                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13, color: item.discountAmount > 0 ? 'var(--brand-dark)' : 'var(--text-tertiary)' }}>
+                        {item.discountAmount > 0 ? `- ${fmtINR(item.discountAmount)}` : '—'}
+                      </td>
+                      
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>
                         {item.cgstRate + item.sgstRate + item.igstRate + item.cessRate}%
                       </td>
@@ -412,35 +502,20 @@ export default function SalesDetailPage() {
         <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Payment Summary</h2>
 
         {/* Amount Breakdown Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
           <div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Subtotal</p>
-            <p style={{ fontSize: 16, fontWeight: 600 }}>{fmtINR(sale?.subtotal || 0)}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Grand Total (After Trade-In Deductions)</p>
+            <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(sale?.totalAmount || 0)}</p>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Discount</p>
-            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--danger-fg)' }}>-{fmtINR(sale?.discountAmount || 0)}</p>
-          </div>
-          <div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Tax Breakdown</p>
-            <div style={{ fontSize: 13, display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 12px' }}>
-              <span>CGST:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.cgstRate / 100)), 0) || 0)}</span>
-              <span>SGST:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.sgstRate / 100)), 0) || 0)}</span>
-              <span>IGST:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.igstRate / 100)), 0) || 0)}</span>
-              <span>CESS:</span> <span style={{ textAlign: 'right' }}>{fmtINR(sale?.items?.reduce((s, it) => s + ((it.unitPrice - it.discountAmount) * it.quantity * (it.cessRate / 100)), 0) || 0)}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase' }}>Amount Paid</p>
+              <p style={{ fontSize: 16, fontWeight: 600, color: '#10b981' }}>{fmtINR(sale?.paidAmount || 0)}</p>
             </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Total</p>
-            <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(sale?.totalAmount || 0)}</p>
-          </div>
-          <div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Paid Amount</p>
-            <p style={{ fontSize: 16, fontWeight: 600, color: '#10b981' }}>{fmtINR(sale?.paidAmount || 0)}</p>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Pending Amount</p>
-            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--warning-fg)' }}>{fmtINR(sale?.pendingAmount || 0)}</p>
+            <div>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase' }}>Balance Due</p>
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--warning-fg)' }}>{fmtINR(sale?.pendingAmount || 0)}</p>
+            </div>
           </div>
         </div>
 
@@ -501,11 +576,11 @@ export default function SalesDetailPage() {
 
       {/* Invoice Modal */}
       {invoiceModal && (
-        <Modal title={`Invoice Preview - ${sale.saleNumber || sale.id?.slice(0, 8)}…`} onClose={() => setInvoiceModal(false)} width={700}>
+        <Modal title={`Challan Preview - ${sale.saleNumber || sale.id?.slice(0, 8)}…`} onClose={() => setInvoiceModal(false)} width={700}>
           <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, overflow: 'hidden', marginBottom: 20 }}>
             <iframe
               src={`${STATIC_BASE}/${sale.invoiceUrl}`}
-              title="Invoice"
+              title="Challan"
               style={{ width: '100%', height: '600px', border: 'none' }}
             />
           </div>
@@ -518,7 +593,7 @@ export default function SalesDetailPage() {
                 rel="noreferrer"
                 style={{ background: 'var(--brand-dark)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-sans)' }}
               >
-                <Download size={14} /> Download Invoice
+                <Download size={14} /> Download Challan
               </a>
             )}
           </div>
@@ -551,7 +626,7 @@ export default function SalesDetailPage() {
         </Modal>
       )}
 
-      {/* Assign Bike Modal (Finalize Challan) */}
+      {/* Assign Bike Modal */}
       {assigningBike && (
         <Modal title="Finalize Challan - Select Specific Vehicle" onClose={() => setAssigningBike(null)}>
           <div style={{ padding: '4px 0 16px 0' }}>
@@ -560,33 +635,25 @@ export default function SalesDetailPage() {
             </p>
             
             <Field label="Search by Chassis / Engine No">
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  placeholder="Type to search..."
-                  value={bikeSearch}
-                  onChange={(e) => setBikeSearch(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border-secondary)',
-                    fontSize: 13,
-                    fontFamily: 'var(--font-sans)',
-                    outline: 'none',
-                    marginBottom: 12
-                  }}
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="Type to search..."
+                value={bikeSearch}
+                onChange={(e) => setBikeSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border-secondary)',
+                  fontSize: 13,
+                  fontFamily: 'var(--font-sans)',
+                  outline: 'none',
+                  marginBottom: 12
+                }}
+              />
             </Field>
 
-            <div style={{ 
-              maxHeight: 250, 
-              overflowY: 'auto', 
-              border: '1px solid var(--border-secondary)', 
-              borderRadius: 8,
-              background: 'var(--bg-primary)'
-            }}>
+            <div style={{ maxHeight: 250, overflowY: 'auto', border: '1px solid var(--border-secondary)', borderRadius: 8, background: 'var(--bg-primary)' }}>
               {filteredBikes.length > 0 ? (
                 filteredBikes.map(b => (
                   <div
@@ -604,9 +671,7 @@ export default function SalesDetailPage() {
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{b.chassisNumber}</span>
                       <span style={{ fontSize: 11, color: 'var(--brand-dark)', background: 'var(--brand-light)', padding: '2px 6px', borderRadius: 4 }}>In Stock</span>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                      Engine: {b.engineNumber}
-                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Engine: {b.engineNumber}</div>
                   </div>
                 ))
               ) : (
@@ -615,12 +680,6 @@ export default function SalesDetailPage() {
                 </div>
               )}
             </div>
-
-            {availableBikes.length === 0 && (
-              <p style={{ fontSize: 12, color: 'var(--danger-fg)', marginTop: 12, fontWeight: 500 }}>
-                ⚠️ No available stock matches this model and color! Please purchase stock first.
-              </p>
-            )}
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
             <Button onClick={() => { setAssigningBike(null); setBikeSearch(''); setSelectedBikeId(''); }} variant="secondary">Cancel</Button>
@@ -630,4 +689,4 @@ export default function SalesDetailPage() {
       )}
     </div>
   );
-}
+} 

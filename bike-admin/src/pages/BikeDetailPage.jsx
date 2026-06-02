@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bike, Calendar, Hash, Palette, CheckCircle, XCircle, Edit3, Settings } from 'lucide-react';
+import { ArrowLeft, Bike, Calendar, Hash, Palette, CheckCircle, XCircle, Edit3, Settings, User, ShoppingBag } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { bikesApi } from '../api/services';
-import { STATUS_COLORS } from '../utils/constants';
+import { STATUS_COLORS, fmtINR } from '../utils/constants';
 import { Card, Badge, Button, Field, Input, FormGrid } from '../components/ui';
 
 export default function BikeDetailPage() {
@@ -26,7 +26,7 @@ export default function BikeDetailPage() {
       const data = resp.data || resp;
       setBike(data);
       setForm({
-        registrationNumber: data.registrationNumber || 'N/A',
+        registrationNumber: data.registrationNumber || '',
         isRcArrived: !!data.isRcArrived,
         isNumberPlateReady: !!data.isNumberPlateReady,
       });
@@ -55,8 +55,14 @@ export default function BikeDetailPage() {
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
   if (!bike) return null;
 
+  const isSold = bike.status === 'SOLD';
+  const isAvailable = bike.status === 'AVAILABLE';
+
+  // Find sale info from either direct relation or via saleItems (for older data)
+  const saleInfo = bike.sale || (bike.saleItems?.[0]?.sale);
+
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+    <div style={{ width: '100%', padding: '0 24px' }}>
       <button 
         onClick={() => navigate('/bikes')}
         style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 16 }}
@@ -64,20 +70,22 @@ export default function BikeDetailPage() {
         <ArrowLeft size={16} /> Back to Inventory
       </button>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, width: '100%' }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>{bike.model?.name}</h1>
           <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>{bike.chassisNumber}</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <Badge label={bike.status} variant={bike.status === 'AVAILABLE' ? 'success' : 'warning'} />
-          <Button icon={Edit3} onClick={() => setEditing(!editing)}>
-            {editing ? 'Cancel Edit' : 'Update Registration'}
-          </Button>
+          {!isAvailable && (
+            <Button icon={Edit3} onClick={() => setEditing(!editing)}>
+              {editing ? 'Cancel Edit' : 'Update Registration'}
+            </Button>
+          )}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, width: '100%' }}>
         {/* Core Specs */}
         <Card title="Bike Specifications" icon={Bike}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -92,7 +100,11 @@ export default function BikeDetailPage() {
 
         {/* Registration Details */}
         <Card title="Registration & RC" icon={CheckCircle}>
-          {!editing ? (
+          {isAvailable ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>
+              <p style={{ margin: 0, fontSize: 14 }}>Registration details can only be updated after the bike is reserved or sold.</p>
+            </div>
+          ) : !editing ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ padding: '12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                 <label style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
@@ -149,6 +161,49 @@ export default function BikeDetailPage() {
             </div>
           )}
         </Card>
+
+        {/* Sale & Customer Info */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          {isSold && saleInfo ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+              <Card title="Sales Details" icon={ShoppingBag}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <DetailRow label="Sale Number" value={
+                    <span style={{ fontWeight: 600, color: 'var(--brand-primary)', cursor: 'pointer' }} onClick={() => navigate(`/sales/${saleInfo.id}`)}>
+                      #{saleInfo.saleNumber}
+                    </span>
+                  } />
+                  <DetailRow label="Sale Date" value={new Date(saleInfo.saleDate).toLocaleDateString()} />
+                  <DetailRow label="Total Amount" value={fmtINR(saleInfo.totalAmount)} />
+                  <DetailRow label="Payment Status" value={saleInfo.isPaid ? 'Paid' : 'Pending'} />
+                  <DetailRow label="Payment Type" value={saleInfo.paymentType?.replace(/_/g, ' ')} />
+                </div>
+                <div style={{ marginTop: 16, borderTop: '0.5px solid var(--border-primary)', paddingTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button variant="secondary" size="sm" onClick={() => navigate(`/sales/${saleInfo.id}`)}>
+                    See Full Sale Details
+                  </Button>
+                </div>
+              </Card>
+
+              <Card title="Customer Details" icon={User}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <DetailRow label="Name" value={saleInfo.customer?.name} />
+                  <DetailRow label="Phone" value={saleInfo.customer?.phone} />
+                  <DetailRow label="Email" value={saleInfo.customer?.email} />
+                  <DetailRow label="Address" value={`${saleInfo.customer?.address?.addressLine1}, ${saleInfo.customer?.address?.city}`} />
+                </div>
+              </Card>
+            </div>
+          ) : (
+            <Card title="Sales Information" icon={ShoppingBag}>
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 500 }}>
+                  This bike is yet to be sold.
+                </p>
+              </div>
+            </Card>
+          )}
+        </div>
 
         {/* Purchase Info if exists */}
         {bike.purchase && (

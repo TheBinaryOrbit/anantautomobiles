@@ -3,9 +3,11 @@ import { Bike, Users, Building2, ShoppingCart, Wrench, IndianRupee, TrendingUp, 
 import { dashboardApi } from '../api/services';
 import { PageHeader, StatCard, Card } from '../components/ui';
 import { fmtINR } from '../utils/constants';
+import { useAuth } from '../context/AuthContext'; // Leverage permission state matching machine
 
 export default function DashboardPage() {
-  const [data, setData]     = useState({ bikes: [], customers: [], suppliers: [], sales: [], accessories: [] });
+  const { hasModulePermission } = useAuth(); // Destructure live role/permission filter helper
+  const [data, setData] = useState({ bikes: [], customers: [], suppliers: [], sales: [], accessories: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,16 +19,30 @@ export default function DashboardPage() {
 
   const revenue = data.sales.reduce((s, x) => s + (x.totalAmount || 0), 0);
 
-  const stats = [
-    { label: 'Total Bikes',  value: data.bikes.length,       icon: Bike,         accent: '#EEEDFE' },
-    { label: 'Customers',    value: data.customers.length,   icon: Users,        accent: '#E1F5EE' },
-    { label: 'Suppliers',    value: data.suppliers.length,   icon: Building2,    accent: '#FAEEDA' },
-    { label: 'Total Sales',  value: data.sales.length,       icon: ShoppingCart, accent: '#E6F1FB' },
-    { label: 'Accessories',  value: data.accessories.length, icon: Wrench,       accent: '#FBEAF0' },
-    { label: 'Revenue',      value: fmtINR(revenue),         icon: IndianRupee,  accent: '#EAF3DE' },
-  ];
+  // 1. Conditionally compile the master metrics block based on discrete modular authorization permissions
+  const stats = [];
 
-  const bikeByStatus = ['AVAILABLE','RESERVED','SOLD','IN_SERVICE'].map(s => ({
+  if (hasModulePermission('bike', 'view')) {
+    stats.push({ label: 'Total Bikes', value: data.bikes.length, icon: Bike, accent: '#EEEDFE' });
+  }
+  if (hasModulePermission('customer', 'view')) {
+    stats.push({ label: 'Customers', value: data.customers.length, icon: Users, accent: '#E1F5EE' });
+  }
+  if (hasModulePermission('supplier', 'view')) {
+    stats.push({ label: 'Suppliers', value: data.suppliers.length, icon: Building2, accent: '#FAEEDA' });
+  }
+  if (hasModulePermission('sales', 'view')) {
+    stats.push({ label: 'Total Sales', value: data.sales.length, icon: ShoppingCart, accent: '#E6F1FB' });
+  }
+  if (hasModulePermission('accessories', 'view')) {
+    stats.push({ label: 'Accessories', value: data.accessories.length, icon: Wrench, accent: '#FBEAF0' });
+  }
+  // Safeguard gross company financial ledgers unless explicitly permitted (e.g. ADMIN / ACCOUNTANT)
+  if (hasModulePermission('reports', 'view') || hasModulePermission('analytics', 'view')) {
+    stats.push({ label: 'Revenue', value: fmtINR(revenue), icon: IndianRupee, accent: '#EAF3DE' });
+  }
+
+  const bikeByStatus = ['AVAILABLE', 'RESERVED', 'SOLD', 'IN_SERVICE'].map(s => ({
     status: s,
     count: data.bikes.filter(b => b.status === s).length,
   }));
@@ -39,48 +55,64 @@ export default function DashboardPage() {
     <div>
       <PageHeader icon={TrendingUp} title="Dashboard" subtitle="Overview of your bike shop operations" />
 
-      {/* Stat grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: '1.5rem' }}>
-        {stats.map(s => <StatCard key={s.label} label={s.label} value={loading ? '…' : s.value} icon={s.icon} accent={s.accent} />)}
-      </div>
+      {/* Dynamic Authorized Metric Grid layout blocks */}
+      {stats.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: '1.5rem' }}>
+          {stats.map(s => <StatCard key={s.label} label={s.label} value={loading ? '…' : s.value} icon={s.icon} accent={s.accent} />)}
+        </div>
+      ) : (
+        <div style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: '1.5rem' }}>
+          Welcome! No macro dashboard metrics are allocated to your profile layer. Please use the navigation sidebar to begin.
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        {/* Bike Status */}
-        <Card>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Bike size={14} /> Bike Inventory Status
-          </div>
-          {bikeByStatus.map(({ status, count }) => (
-            <div key={status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border-secondary)' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{status}</span>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>{count}</span>
+      {/* Flex container layout that dynamically changes template layouts depending on rendering conditions */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: (hasModulePermission('bike', 'view') && hasModulePermission('sales', 'view')) ? '1fr 1fr' : '1fr', 
+        gap: 14 
+      }}>
+        
+        {/* Bike Inventory Tracking Block: Guarded explicitly */}
+        {hasModulePermission('bike', 'view') && (
+          <Card>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Bike size={14} /> Bike Inventory Status
             </div>
-          ))}
-        </Card>
-
-        {/* Recent Sales */}
-        <Card>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ShoppingCart size={14} /> Recent Sales
-          </div>
-          {recentSales.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No sales yet</p>}
-          {recentSales.map(s => (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border-secondary)' }}>
-              <div>
-                <div style={{ fontSize: 13 }}>{s.customer?.name || '—'}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{s.saleDate ? new Date(s.saleDate).toLocaleDateString('en-IN') : '—'}</div>
+            {bikeByStatus.map(({ status, count }) => (
+              <div key={status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border-secondary)' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{status}</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{count}</span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtINR(s.totalAmount)}</span>
+            ))}
+          </Card>
+        )}
+
+        {/* Commercial Sales Ledger tracking block: Guarded explicitly */}
+        {hasModulePermission('sales', 'view') && (
+          <Card>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ShoppingCart size={14} /> Recent Sales
             </div>
-          ))}
-        </Card>
+            {recentSales.length === 0 && <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No sales yet</p>}
+            {recentSales.map(s => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border-secondary)' }}>
+                <div>
+                  <div style={{ fontSize: 13 }}>{s.customer?.name || '—'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{s.saleDate ? new Date(s.saleDate).toLocaleDateString('en-IN') : '—'}</div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtINR(s.totalAmount)}</span>
+              </div>
+            ))}
+          </Card>
+        )}
       </div>
 
-      {/* Low stock */}
-      {data.accessories.some(a => a.quantityInStock <= 5) && (
+      {/* Critical Stock alerts tracker card: Guarded explicitly */}
+      {hasModulePermission('accessories', 'view') && data.accessories.some(a => a.quantityInStock <= 5) && (
         <Card style={{ marginTop: 14, borderColor: '#FAEEDA' }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, color: '#633806' }}>
-            <Package size={14} /> Low Stock Accessories
+            <Package size={14} /> Low Stock Accessories Alert
           </div>
           {data.accessories.filter(a => a.quantityInStock <= 5).map(a => (
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '0.5px solid var(--border-secondary)', fontSize: 13 }}>

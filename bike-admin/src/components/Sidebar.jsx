@@ -1,37 +1,23 @@
 import * as Icons from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useWindowSize from '../hooks/useWindowSize.js';
-
-const NAV_ITEMS = [
-  { path: '/',             label: 'Dashboard',    iconName: 'LayoutDashboard' },
-  { path: '/bikes',        label: 'Bikes',        iconName: 'Bike' },
-  { path: '/bike-models',  label: 'Bike Models',  iconName: 'Layers' },
-  { path: '/accessories',  label: 'Accessories',  iconName: 'Wrench' },
-  { path: '/customers',    label: 'Customers',    iconName: 'Users' },
-  { path: '/suppliers',    label: 'Suppliers',    iconName: 'Building2' },
-  { path: '/purchases',    label: 'Purchases',    iconName: 'Truck' },
-  { path: '/sales',        label: 'Sales',        iconName: 'ShoppingCart' },
-  { path: '/discounts',    label: 'Discounts',    iconName: 'Tag' },
-  { path: '/users',        label: 'Users',        iconName: 'User' },
-  { path: '/roles',        label: 'Roles',        iconName: 'KeyRound' },
-];
+import { useNavigation } from '../context/NavigationContext'; // Import the computed navigation context hook
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
+  const { navItems } = useNavigation(); // Grab the dynamically filtered nav item array map list
 
   const handleNavigate = (path) => {
     navigate(path);
     if (isMobile) onClose?.();
   };
 
-  // Only show sidebar when isOpen is true on mobile, always show on desktop
   if (isMobile && !isOpen) return null;
 
   return (
     <>
-      {/* Mobile Overlay */}
       {isMobile && isOpen && (
         <div
           onClick={onClose}
@@ -58,7 +44,7 @@ export default function Sidebar({ isOpen, onClose }) {
         zIndex: isMobile ? 50 : 'auto',
         boxShadow: isMobile ? '2px 0 8px rgba(0, 0, 0, 0.1)' : 'none',
       }}>
-        {/* Logo */}
+        {/* Logo and Branding header blocks */}
         <div style={{ 
           padding: '1.25rem 1.1rem', 
           borderBottom: '1px solid rgba(255,255,255,0.06)', 
@@ -89,11 +75,12 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* Nav */}
+        {/* Dynamic Navigation rendering list container frame */}
         <nav style={{ flex: 1, padding: '0.6rem 0.5rem', overflowY: 'auto' }}>
-          {NAV_ITEMS.map(item => {
+          {navItems.map(item => {
             const Icon = Icons[item.iconName];
-            const active = location.pathname === item.path || (item.path === '/' && location.pathname === '/dashboard');
+            const active = location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/');
+            
             return (
               <button
                 key={item.path}
@@ -141,7 +128,7 @@ export default function Sidebar({ isOpen, onClose }) {
           fontSize: 10, 
           color: 'rgba(255,255,255,0.25)' 
         }}>
-          © 2025 Bike Shop Admin
+          © 2026 Anant Automobiles
         </div>
       </aside>
     </>

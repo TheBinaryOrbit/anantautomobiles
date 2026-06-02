@@ -31,7 +31,6 @@ export default function CustomersPage() {
     const q = search.toLowerCase();
     setFiltered(items.filter(c =>
       c.name?.toLowerCase().includes(q) ||
-      c.email?.toLowerCase().includes(q) ||
       c.phone?.toLowerCase().includes(q)
     ));
   }, [search, items]);
@@ -41,8 +40,8 @@ export default function CustomersPage() {
   const save = async () => {
     setLoading(true);
     try {
-      const { name, email, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country } = form;
-      const payload = { name, email, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country };
+      const { name, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country } = form;
+      const payload = { name, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country };
       if (modal.id) await customersApi.update(modal.id, payload);
       else           await customersApi.create(payload);
       toast.success(modal.id ? 'Customer updated' : 'Customer added');
@@ -67,7 +66,6 @@ export default function CustomersPage() {
 
   const cols = [
     { key: 'name',         label: 'Name' },
-    { key: 'email',        label: 'Email' },
     { key: 'phone',        label: 'Phone' },
     { key: 'aadhaarNumber',label: 'Aadhaar' },
     { key: 'panNumber',    label: 'PAN' },
@@ -78,7 +76,7 @@ export default function CustomersPage() {
     <div>
       <PageHeader icon={Users} title="Customers" subtitle="Manage customer records" onAdd={() => { setForm(EMPTY); setModal({ title: 'Add Customer' }); }} addLabel="Add Customer" />
       <Card>
-        <SearchBar value={search} onChange={setSearch} placeholder="Search by name, email, phone…" />
+        <SearchBar value={search} onChange={setSearch} placeholder="Search by name or phone…" />
         <Table cols={cols} rows={filtered} onEdit={openEdit} onDelete={r => setConfirm(r)} />
       </Card>
 
@@ -87,7 +85,6 @@ export default function CustomersPage() {
           <FormGrid>
             <Field label="Full Name *"><Input value={form.name || ''} onChange={e => set('name', e.target.value)} /></Field>
             <Field label="Phone *"><Input value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></Field>
-            <Field label="Email"><Input type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} /></Field>
             <Field label="Aadhaar Number"><Input value={form.aadhaarNumber || ''} onChange={e => set('aadhaarNumber', e.target.value)} /></Field>
             <Field label="PAN Number"><Input value={form.panNumber || ''} onChange={e => set('panNumber', e.target.value)} /></Field>
 
