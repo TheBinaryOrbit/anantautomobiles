@@ -4,7 +4,7 @@ const { authMiddleware, adminCheck } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', authMiddleware, (req, res, next) => discountController.getAllDiscounts(req, res, next));
+router.get('/', (req, res, next) => discountController.getAllDiscounts(req, res, next));
 router.get('/active', authMiddleware, (req, res, next) => discountController.getActiveDiscounts(req, res, next));
 router.get('/:id', authMiddleware, (req, res, next) => discountController.getDiscount(req, res, next));
 
