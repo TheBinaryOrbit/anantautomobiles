@@ -30,12 +30,13 @@ model user {
 }
 
 model BikeModel {
-  id          String @id @default(uuid())
-  name        String @unique
-  brand       String
-  category    String
-  imageUrl    String
-  remark      String?
+  id        String  @id @default(uuid())
+  name      String  @unique
+  modelName String?
+  brand     String
+  category  String
+  imageUrl  String
+  remark    String?
 
   // optional fields for more detailed information about the bike model
   engineCapacity Int?
@@ -49,14 +50,14 @@ model BikeModel {
   rtoCharges       Float?
   insuranceCharges Float?
   otherCharges     Float?
-  onRoadPrice      Float?
-  
+  purchasePrice    Float?
+
   cgstRate Float @default(0)
   sgstRate Float @default(0)
   igstRate Float @default(0)
   cessRate Float @default(0)
-  
-  hsnCode          String?
+
+  hsnCode String?
 
   // deleted flag for soft deletes
   isDeleted Boolean @default(false)
@@ -82,7 +83,7 @@ model Bike {
 
   manufactureYear    Int?
   manufactureMonth   Months?
-  registrationNumber String? @unique 
+  registrationNumber String? @unique
   isRcArrived        Boolean @default(false)
   isNumberPlateReady Boolean @default(false)
 
@@ -99,6 +100,8 @@ model Bike {
   updatedAt DateTime @updatedAt
 
   saleItems SaleItem[]
+  sale      Sale?      @relation(fields: [saleId], references: [id])
+  saleId    String?
 
   @@map("bikes")
 }
@@ -127,11 +130,11 @@ model Purchase {
 model accessories {
   id String @id @default(uuid())
 
-  name        String
-  remark      String?
-  price       Float
-  imageUrl    String
-  unit        String // uppercase must be specified (e.g., "PIECE", "SET", "BOX")
+  name     String
+  remark   String?
+  price    Float
+  imageUrl String
+  unit     String // uppercase must be specified (e.g., "PIECE", "SET", "BOX")
 
   quantityInStock Int
 
@@ -163,7 +166,9 @@ model Sale {
   pendingAmount  Float @default(0)
   paidAmount     Float @default(0)
 
-  financeCompany String?
+  financeCompany        String?
+  financeExecutiveName  String?
+  financeExecutivePhone String?
 
   isPaid        Boolean       @default(false)
   paymentType   paymentType
@@ -172,26 +177,39 @@ model Sale {
   discountId String?
   discount   Discount? @relation(fields: [discountId], references: [id])
 
-  notes     String?
+  // insurance / goodlife info
+  nomineeName     String?
+  nomineeAge      Int?
+  nomineeRelation String?
+
+  notes      String?
   invoiceUrl String? // URL to the generated invoice
-  isDeleted Boolean @default(false)
+  isDeleted  Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   items SaleItem[]
+  bikes Bike[]
+
+  // old bike exchages
+  exchange excahgebikes?
 
   @@map("sales")
 }
 
 model Discount {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  type        DiscountType
-  value       Float
-  upToLimit   Float?
-  isActive    Boolean  @default(true)
-  isDeleted   Boolean  @default(false)
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String? @db.Text
+  terms       String? @db.Text // comma separated values
+
+  type      DiscountType
+  value     Float
+  upToLimit Float?
+
+  isActive  Boolean @default(true)
+  isDeleted Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -227,20 +245,20 @@ model SaleItem {
   quantity       Int   @default(1) // always 1 for bikes
   unitPrice      Float // this will be exShowroomPrice
   discountAmount Float @default(0)
-  
+
   // Tax breakdown
   cgstRate Float @default(0)
   sgstRate Float @default(0)
   igstRate Float @default(0)
   cessRate Float @default(0)
-  
+
   // Extra charges
   rtoCharges       Float @default(0)
   insuranceCharges Float @default(0)
   otherCharges     Float @default(0)
 
-  taxRate        Float @default(0) // total tax rate (%)
-  lineTotal      Float // (unitPrice - discountAmount) * quantity * (1 + taxRate) + rto + insurance + other
+  taxRate   Float @default(0) // total tax rate (%)
+  lineTotal Float // (unitPrice - discountAmount) * quantity * (1 + taxRate) + rto + insurance + other
 
   notes String?
 
@@ -280,12 +298,13 @@ model customer {
 
   // basic customer information
   name  String
-  email String @unique
   phone String @unique
 
   // optional identification documents
-  aadhaarNumber String?
-  panNumber     String?
+  aadhaarNumber       String?
+  panNumber           String?
+  dob                 DateTime?
+  marriageAnniversary DateTime?
 
   addressId String
   address   address @relation(fields: [addressId], references: [id])
@@ -321,14 +340,13 @@ model address {
   @@map("addresses")
 }
 
-
 model Role {
-  id             String           @id @default(uuid())
-  name           String           @unique
-  description    String?
-  isActive       Boolean          @default(true)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   userRoles       UserRoleAssignment[]
   rolePermissions RolePermission[]
@@ -337,13 +355,13 @@ model Role {
 }
 
 model Permission {
-  id             String           @id @default(uuid())
-  key            String           @unique
-  module         String
-  action         String
-  description    String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id          String   @id @default(uuid())
+  key         String   @unique
+  module      String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   rolePermissions RolePermission[]
 
@@ -351,29 +369,87 @@ model Permission {
 }
 
 model RolePermission {
-  id           String      @id @default(uuid())
+  id           String   @id @default(uuid())
   roleId       String
   permissionId String
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime @default(now())
 
-  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
 }
 
 model UserRoleAssignment {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   roleId    String
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  user      user      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@map("user_roles")
+}
+
+model excahgebikes {
+  id String @id @default(uuid())
+
+  oldBikeName  String
+  oldBikeModel String
+  oldBikeBrand String
+  oldBikeColor String
+  oldBikeYear  Int
+
+  oldBikeEngineNumber  String? @unique
+  oldBikeChassisNumber String? @unique
+
+  exchangeValue Float
+  notes         String?
+
+  // sale relationship
+  saleId String @unique
+  sale   Sale   @relation(fields: [saleId], references: [id])
+
+  // checklist for old bike condition
+  isOldRCAvailable         Boolean @default(false)
+  isNocAvailable           Boolean @default(false)
+  isOwnerDocumentAvailable Boolean @default(false)
+  isChallanAvailable       Boolean @default(false)
+  isStatmentAvailable      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model ServiceInquiry {
+  id            String   @id @default(uuid())
+  name          String
+  phone         String
+  latitude      Float
+  longitude     Float
+  serviceType   String   // e.g., "Doorstep Service"
+  isPaid        String   // "paid" or "free"
+  freeServiceId String?  // Optional id if it matches a coupon or booklet
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SalesInquiry {
+  id        String   @id @default(uuid())
+  fullName  String
+  phone     String
+  model     String
+  city      String
+  state     String
+  pincode   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum SaleStatus {

@@ -1,113 +1,144 @@
-const prisma = require('../src/config/db.js');
+const prisma = require('./src/config/db.js');
 const bcrypt = require('bcryptjs');
 
-// Define all permissions by module and action
+
 const permissions = [
-    // Admin permissions (all module:action combinations)
-    { module: 'users', action: 'create', description: 'Create users' },
-    { module: 'users', action: 'view', description: 'View users' },
-    { module: 'users', action: 'edit', description: 'Edit users' },
-    { module: 'users', action: 'delete', description: 'Delete users' },
+    // ─── User Management ───
+    { module: 'users', action: 'create', description: 'Create dashboard users' },
+    { module: 'users', action: 'view', description: 'View user registry profiles' },
+    { module: 'users', action: 'edit', description: 'Edit user detail data records' },
+    { module: 'users', action: 'delete', description: 'Soft delete workspace accounts' },
 
-    // Bike Model permissions
-    { module: 'bikeModel', action: 'create', description: 'Create bike models' },
-    { module: 'bikeModel', action: 'view', description: 'View bike models' },
-    { module: 'bikeModel', action: 'edit', description: 'Edit bike models' },
-    { module: 'bikeModel', action: 'delete', description: 'Delete bike models' },
+    // ─── Bike Models ───
+    { module: 'bikeModel', action: 'create', description: 'Create vehicle models configurations' },
+    { module: 'bikeModel', action: 'view', description: 'View catalogs of vehicle templates' },
+    { module: 'bikeModel', action: 'edit', description: 'Modify prices, variant dimensions or parameters' },
+    { module: 'bikeModel', action: 'delete', description: 'Mark bike model templates as deleted' },
 
-    // Bike permissions
-    { module: 'bike', action: 'create', description: 'Create bikes' },
-    { module: 'bike', action: 'view', description: 'View bikes' },
-    { module: 'bike', action: 'edit', description: 'Edit bikes' },
-    { module: 'bike', action: 'delete', description: 'Delete bikes' },
-    { module: 'bike', action: 'markBooked', description: 'Mark bike as booked' },
+    // ─── Bike Inventory Stocks ───
+    { module: 'bike', action: 'create', description: 'Manually introduce individual hardware assets' },
+    { module: 'bike', action: 'view', description: 'Track serial engine and chassis layout lists' },
+    { module: 'bike', action: 'edit', description: 'Update production status codes' },
+    { module: 'bike', action: 'delete', description: 'Purge individual stock registry entries' },
+    { module: 'bike', action: 'markBooked', description: 'Mark bike tracking state as reserved' },
 
-    // Accessories permissions
-    { module: 'accessories', action: 'create', description: 'Create accessories' },
-    { module: 'accessories', action: 'view', description: 'View accessories' },
-    { module: 'accessories', action: 'edit', description: 'Edit accessories' },
-    { module: 'accessories', action: 'delete', description: 'Delete accessories' },
-    { module: 'accessories', action: 'updateQuantity', description: 'Update accessibility quantity' },
+    // ─── Purchases / Stock Inflow ───
+    { module: 'purchases', action: 'create', description: 'Log inbound supply purchases invoices' },
+    { module: 'purchases', action: 'view', description: 'Monitor inventory transaction order books' },
+    { module: 'purchases', action: 'remove', description: 'Void or cancel an explicit stock purchase event' },
 
-    // Customer permissions
-    { module: 'customer', action: 'create', description: 'Create customers' },
-    { module: 'customer', action: 'view', description: 'View customers' },
-    { module: 'customer', action: 'edit', description: 'Edit customers' },
-    { module: 'customer', action: 'delete', description: 'Delete customers' },
+    // ─── Accessories ───
+    { module: 'accessories', action: 'create', description: 'Add new commercial parts items' },
+    { module: 'accessories', action: 'view', description: 'Inspect available non-vehicle stocks' },
+    { module: 'accessories', action: 'edit', description: 'Update non-vehicle item catalog metadata' },
+    { module: 'accessories', action: 'delete', description: 'Remove accessory catalog item entities' },
+    { module: 'accessories', action: 'updateQuantity', description: 'Manually increment/decrement shelf logs' },
 
-    // Supplier permissions
-    { module: 'supplier', action: 'create', description: 'Create suppliers' },
-    { module: 'supplier', action: 'view', description: 'View suppliers' },
-    { module: 'supplier', action: 'edit', description: 'Edit suppliers' },
-    { module: 'supplier', action: 'delete', description: 'Delete suppliers' },
+    // ─── Customers ───
+    { module: 'customer', action: 'create', description: 'Add a new client profile card' },
+    { module: 'customer', action: 'view', description: 'Access verification indices or profiles' },
+    { module: 'customer', action: 'edit', description: 'Update critical legal identifiers' },
+    { module: 'customer', action: 'delete', description: 'Mark client accounts as deleted' },
 
-    // Sales permissions
-    { module: 'sales', action: 'create', description: 'Create sales' },
-    { module: 'sales', action: 'view', description: 'View sales' },
-    { module: 'sales', action: 'edit', description: 'Edit sales' },
-    { module: 'sales', action: 'delete', description: 'Delete sales' },
-    { module: 'sales', action: 'updateStatus', description: 'Update sales status' },
+    // ─── Suppliers ───
+    { module: 'supplier', action: 'create', description: 'Introduce a logistics partner profile' },
+    { module: 'supplier', action: 'view', description: 'Look up dealer contact directories' },
+    { module: 'supplier', action: 'edit', description: 'Edit supplier contact parameters' },
+    { module: 'supplier', action: 'delete', description: 'Mark dealer entries as deleted' },
 
-    // Reports & Analytics
-    { module: 'reports', action: 'view', description: 'View reports' },
-    { module: 'analytics', action: 'view', description: 'View analytics' },
+    // ─── Sales Deals & Orders ───
+    { module: 'sales', action: 'create', description: 'Generate retail sale challans' },
+    { module: 'sales', action: 'view', description: 'Inspect accounting transactional histories' },
+    { module: 'sales', action: 'edit', description: 'Modify active orders snapshots' },
+    { module: 'sales', action: 'delete', description: 'Soft delete commercial checkout invoices' },
+    { module: 'sales', action: 'updateStatus', description: 'Alter order workflow checkpoints' },
 
-    // setting
-    { module: 'role', action: 'manage', description: 'Manage roles and permissions' },
+    // ─── Discounts & Campaigns ───
+    { module: 'discounts', action: 'create', description: 'Launch promo code campaigns' },
+    { module: 'discounts', action: 'view', description: 'View available scheme matrices' },
+    { module: 'discounts', action: 'edit', description: 'Modify value markdown caps or limits' },
+    { module: 'discounts', action: 'remove', description: 'Deactivate target markdown schemes' },
 
+    // ─── Exchange Vehicle Logs ───
+    { module: 'exchange', action: 'create', description: 'Process customer trace valuation entries' },
+    { module: 'exchange', action: 'view', description: 'Inspect incoming legal verification files' },
+    { module: 'exchange', action: 'edit', description: 'Update condition comments or valuations' },
+    { module: 'exchange', action: 'delete', description: 'Remove a linked validation entity' },
 
+    // ─── Service Inquiries (CRM Doorstep) ───
+    { module: 'serviceInquiry', action: 'create', description: 'Log a workspace maintenance ticket' },
+    { module: 'serviceInquiry', action: 'view', description: 'Inspect dispatch GPS coordinate pins' },
+
+    // ─── Sales Inquiries (CRM Leads) ───
+    { module: 'salesInquiry', action: 'view', description: 'Monitor high-intent lead flow sheets' },
+
+    // ─── System Level Reporting ───
+    { module: 'reports', action: 'view', description: 'Generate audit ledger files' },
+    { module: 'analytics', action: 'view', description: 'Analyze performance matrices' },
+    { module: 'role', action: 'manage', description: 'Modify systemic role permissions sets' },
 ];
 
-// Define roles with their permissions
 const roles = [
     {
         name: 'ADMIN',
-        description: 'Administrator with full access to all features',
-        permissionModules: ['users', 'bikeModel', 'bike', 'accessories', 'customer', 'supplier', 'sales', 'reports', 'analytics'],
+        description: 'Administrator with absolute clearance across all tables',
+        permissions: [],
     },
     {
         name: 'ACCOUNTANT',
-        description: 'Accountant with access to sales and customer information',
-        permissions: ['sales_create', 'sales_view', 'sales_edit', 'sales_updateStatus', 'customer_view', 'reports_view'],
+        description: 'Financial auditor with access to sales, markdown parameters, and invoicing logs',
+        permissions: [
+            'sales_create', 'sales_view', 'sales_edit', 'sales_updateStatus',
+            'customer_view',
+            'discounts_view', 'discounts_create', 'discounts_edit',
+            'exchange_view',
+            'reports_view', 'analytics_view'
+        ],
     },
     {
         name: 'INVENTORY_MANAGER',
-        description: 'Inventory Manager with access to bikes, bike models, and accessories',
+        description: 'Warehouse dispatcher managing vehicle catalogs, inflows, and hardware stocks',
         permissions: [
-            'bikeModel_create',
-            'bikeModel_view',
-            'bikeModel_edit',
-            'bikeModel_delete',
-            'bike_create',
-            'bike_view',
-            'bike_edit',
-            'bike_delete',
-            'bike_markBooked',
-            'accessories_create',
-            'accessories_view',
-            'accessories_edit',
-            'accessories_delete',
-            'accessories_updateQuantity',
-            'supplier_view',
+            'bikeModel_create', 'bikeModel_view', 'bikeModel_edit', 'bikeModel_delete',
+            'bike_create', 'bike_view', 'bike_edit', 'bike_delete', 'bike_markBooked',
+            'purchases_create', 'purchases_view', 'purchases_remove',
+            'accessories_create', 'accessories_view', 'accessories_edit', 'accessories_delete', 'accessories_updateQuantity',
+            'supplier_view', 'supplier_create', 'supplier_edit',
+            'exchange_view', 'exchange_edit'
         ],
     },
     {
         name: 'SALES_EXECUTIVE',
-        description: 'Sales Executive with access to create and view sales',
-        permissions: ['sales_create', 'sales_view', 'customer_view', 'bike_view', 'accessories_view'],
+        description: 'Showroom consultant processing floor deals, intake assessments, and lead cards',
+        permissions: [
+            'sales_create', 'sales_view', 
+            'customer_create', 'customer_view', 'customer_edit',
+            'bike_view', 
+            'bikeModel_view',
+            'accessories_view',
+            'discounts_view',
+            'exchange_create', 'exchange_view',
+            'salesInquiry_view'
+        ],
+    },
+    {
+        name: 'SERVICE_COORDINATOR',
+        description: 'Workshop representative allocating doorstep mechanics and maintenance requests',
+        permissions: [
+            'serviceInquiry_create', 'serviceInquiry_view',
+            'customer_view',
+            'bike_view',
+            'accessories_view', 'accessories_updateQuantity'
+        ],
     },
     {
         name: 'VIEWER',
-        description: 'Read-only access to all resources',
+        description: 'Read-only access across the entire dealership dashboard layout',
         permissions: [
-            'users_view',
-            'bikeModel_view',
-            'bike_view',
-            'accessories_view',
-            'customer_view',
-            'supplier_view',
-            'sales_view',
-            'reports_view',
+            'users_view', 'bikeModel_view', 'bike_view', 'purchases_view',
+            'accessories_view', 'customer_view', 'supplier_view', 'sales_view',
+            'discounts_view', 'exchange_view', 'serviceInquiry_view', 'salesInquiry_view',
+            'reports_view'
         ],
     },
 ];
@@ -116,19 +147,22 @@ async function seedData() {
     try {
         console.log('🌱 Starting seed process...\n');
 
-        // 1. Create or update permissions
-        console.log('📝 Creating permissions...');
+        // ─── CLEAR EXISTING DATA STREAMS ───
+        console.log('🧼 Flushing existing RBAC tables to avoid unique index constraints...');
+        await prisma.userRoleAssignment.deleteMany({});
+        await prisma.rolePermission.deleteMany({});
+        await prisma.role.deleteMany({});
+        await prisma.permission.deleteMany({});
+        await prisma.user.deleteMany({});
+        console.log('  ✅ Cleanup executed successfully.\n');
+
+        // 1. Create permissions
+        console.log('📝 Upserting system permissions matching schema fields...');
         const createdPermissions = {};
         for (const perm of permissions) {
             const key = `${perm.module}_${perm.action}`;
-            const permission = await prisma.permission.upsert({
-                where: { key },
-                update: {
-                    module: perm.module,
-                    action: perm.action,
-                    description: perm.description,
-                },
-                create: {
+            const permission = await prisma.permission.create({
+                data: {
                     key,
                     module: perm.module,
                     action: perm.action,
@@ -136,189 +170,86 @@ async function seedData() {
                 },
             });
             createdPermissions[key] = permission;
-            console.log(`  ✅ Permission: ${key}`);
         }
+        console.log(`  ✅ Successfully created ${Object.keys(createdPermissions).length} fresh permissions.`);
 
-        // 2. Create or update roles with their permissions
-        console.log('\n📋 Creating roles with permissions...');
+        // 2. Create roles with explicit configuration loops
+        console.log('\n📋 Compiling roles assignment loops...');
         for (const roleData of roles) {
-            // Create or update the role
-            const role = await prisma.role.upsert({
-                where: { name: roleData.name },
-                update: {
-                    description: roleData.description,
-                    isActive: true,
-                },
-                create: {
+            const role = await prisma.role.create({
+                data: {
                     name: roleData.name,
                     description: roleData.description,
                     isActive: true,
                 },
             });
-            console.log(`  ✅ Role created: ${role.name}`);
+            console.log(`  ✅ Role Spawned: ${role.name}`);
 
-            // Handle ADMIN role - assign all permissions
             if (roleData.name === 'ADMIN') {
                 for (const permKey of Object.keys(createdPermissions)) {
-                    await prisma.rolePermission.upsert({
-                        where: {
-                            roleId_permissionId: {
-                                roleId: role.id,
-                                permissionId: createdPermissions[permKey].id,
-                            },
-                        },
-                        update: {},
-                        create: {
+                    await prisma.rolePermission.create({
+                        data: {
                             roleId: role.id,
                             permissionId: createdPermissions[permKey].id,
                         },
                     });
                 }
-                console.log(`    → All permissions assigned to ADMIN`);
-            } else if (roleData.permissions) {
-                // Handle other roles - assign specific permissions
+                console.log(`    → Bound all available master permissions to ADMIN`);
+            } else {
+                let count = 0;
                 for (const permCode of roleData.permissions) {
                     if (createdPermissions[permCode]) {
-                        await prisma.rolePermission.upsert({
-                            where: {
-                                roleId_permissionId: {
-                                    roleId: role.id,
-                                    permissionId: createdPermissions[permCode].id,
-                                },
-                            },
-                            update: {},
-                            create: {
+                        await prisma.rolePermission.create({
+                            data: {
                                 roleId: role.id,
                                 permissionId: createdPermissions[permCode].id,
                             },
                         });
+                        count++;
                     }
                 }
-                console.log(`    → ${roleData.permissions.length} permissions assigned`);
+                console.log(`    → Bound ${count} module keys to ${role.name}`);
             }
         }
 
-        // 3. Create or update admin user with ADMIN role
-        console.log('\n👤 Setting up admin user...');
-        const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
-        const hashedPassword = await bcrypt.hash('Admin@123', 10); // Use a secure password in production
+        // 3. Provision accounts with pre-hashed credentials
+        console.log('\n👤 Generating secure system profile entities...');
+        const hashedPassword = await bcrypt.hash('Admin@123', 10);
 
-        // clear all the  users with email
-        await prisma.user.deleteMany({
-            where: {}
-        });
-
-        const adminUser = await prisma.user.upsert({
-            where: { email: 'admin@test.com' },
-            update: {
-                name: 'Admin User',
-                phone: '9000000001',
-            },
-            create: {
-                email: 'admin@test.com',
-                password: hashedPassword,
-                name: 'Admin User',
-                phone: '9000000001',
-                role: 'ADMIN',
-            },
-        });
-        console.log(`  ✅ Admin user: ${adminUser.email}`);
-
-        // Assign ADMIN role to admin user
-        await prisma.userRoleAssignment.upsert({
-            where: {
-                userId_roleId: {
-                    userId: adminUser.id,
-                    roleId: adminRole.id,
-                },
-            },
-            update: {},
-            create: {
-                userId: adminUser.id,
-                roleId: adminRole.id,
-            },
-        });
-        console.log(`    → ADMIN role assigned\n`);
-
-        // 4. Create sample users for other roles
-        console.log('👥 Creating sample users for roles...');
-        const sampleUsers = [
-            {
-                email: 'accountant@test.com',
-                name: 'Accountant User',
-                phone: '9111111111',
-                role: 'ACCOUNTANT',
-            },
-            {
-                email: 'inventory@test.com',
-                name: 'Inventory Manager',
-                phone: '9222222222',
-                role: 'INVENTORY_MANAGER',
-            },
-            {
-                email: 'sales@test.com',
-                name: 'Sales Executive',
-                phone: '9333333333',
-                role: 'SALES_EXECUTIVE',
-            },
-            {
-                email: 'viewer@test.com',
-                name: 'Viewer User',
-                phone: '9444444444',
-                role: 'VIEWER',
-            },
+        const profilesToSeed = [
+            { email: 'admin@test.com', name: 'Admin User', phone: '9000000001', role: 'ADMIN' },
+            { email: 'accountant@test.com', name: 'Accountant User', phone: '9111111111', role: 'ACCOUNTANT' },
+            { email: 'inventory@test.com', name: 'Inventory Manager', phone: '9222222222', role: 'INVENTORY_MANAGER' },
+            { email: 'sales@test.com', name: 'Sales Executive', phone: '9333333333', role: 'SALES_EXECUTIVE' },
+            { email: 'service@test.com', name: 'Service Coordinator', phone: '9444444444', role: 'SERVICE_COORDINATOR' },
+            { email: 'viewer@test.com', name: 'Viewer User', phone: '9555555555', role: 'VIEWER' },
         ];
 
-        for (const userData of sampleUsers) {
-            const user = await prisma.user.upsert({
-                where: { email: userData.email },
-                update: {
-                    name: userData.name,
-                    phone: userData.phone,
-                    role: userData.role,
-                },
-                create: {
-                    email: userData.email,
-                    password: hashedPassword, // In production, this should be hashed
-                    name: userData.name,
-                    phone: userData.phone,
-                    role: userData.role,
-                },
+        for (const p of profilesToSeed) {
+            const userEntity = await prisma.user.create({
+                data: {
+                    email: p.email,
+                    password: hashedPassword,
+                    name: p.name,
+                    phone: p.phone,
+                    role: p.role,
+                }
             });
 
-            const userRole = await prisma.role.findUnique({ where: { name: userData.role } });
-            await prisma.userRoleAssignment.upsert({
-                where: {
-                    userId_roleId: {
-                        userId: user.id,
-                        roleId: userRole.id,
-                    },
-                },
-                update: {},
-                create: {
-                    userId: user.id,
-                    roleId: userRole.id,
-                },
+            const dbRole = await prisma.role.findUnique({ where: { name: p.role } });
+            
+            await prisma.userRoleAssignment.create({
+                data: {
+                    userId: userEntity.id,
+                    roleId: dbRole.id,
+                }
             });
-
-            console.log(`  ✅ ${userData.role}: ${userData.email}`);
+            console.log(`  ✅ Profile Active [${p.role}] bound to: ${p.email}`);
         }
 
-        console.log('\n✨ Seed completed successfully!\n');
-        console.log('📊 Summary:');
-        console.log(`  • Permissions created: ${Object.keys(createdPermissions).length}`);
-        console.log(`  • Roles created: ${roles.length}`);
-        console.log(`  • Users created: ${sampleUsers.length + 1} (including admin)`);
-
-        console.log('\n🔐 User Credentials:');
-        console.log('  ADMIN:           admin@test.com / Admin@123');
-        console.log('  ACCOUNTANT:      accountant@test.com / Admin@123');
-        console.log('  INVENTORY_MGR:   inventory@test.com / Admin@123');
-        console.log('  SALES_EXEC:      sales@test.com / Admin@123');
-        console.log('  VIEWER:          viewer@test.com / Admin@123');
-
+        console.log('\n✨ Database seeding process concluded safely!');
     } catch (error) {
-        console.error('❌ Seed error:', error);
+        console.error('❌ Database migration seed failure encountered:', error);
         process.exit(1);
     } finally {
         await prisma.$disconnect();

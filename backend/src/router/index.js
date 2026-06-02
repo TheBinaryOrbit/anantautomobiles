@@ -10,6 +10,8 @@ const purchaseRouter = require('./purchaseRouter');
 const roleRouter = require('./roleRouter');
 const permissionRouter = require('./permissionRouter');
 const discountRouter = require('./discountRouter');
+const exchangeBikeRouter = require('./exchangeBikeRoutes');
+const inquiryRouter = require('./inquiryRoutes');
 
 const router = express.Router();
 
@@ -28,5 +30,7 @@ router.use('/purchases', purchaseRouter);
 router.use('/roles', roleRouter);
 router.use('/permissions', permissionRouter);
 router.use('/discounts', discountRouter);
+router.use('/exchange-bikes', exchangeBikeRouter);
+router.use('/inquiries', inquiryRouter);
 
 module.exports = router;

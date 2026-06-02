@@ -16,11 +16,11 @@ const MID_GRAY = '#cccccc';
 const COL = {
   sno: MARGIN,
   model: MARGIN + 25,
-  hsn: MARGIN + 180,
-  engine: MARGIN + 235,
-  chassis: MARGIN + 335,
-  price: MARGIN + 435, // Ex-showroom
-  gst: MARGIN + 505,   // Combined GST %
+  hsn: MARGIN + 145,
+  engine: MARGIN + 195,
+  chassis: MARGIN + 285,
+  price: MARGIN + 375, // Ex-showroom
+  gst: MARGIN + 435,   // GST Amt
   amount: PAGE_W - MARGIN  // lineTotal
 };
 
@@ -85,7 +85,7 @@ class InvoiceService {
         const invValX = PAGE_W - MARGIN - 130;
 
         doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK)
-            .text('Invoice #', invLblX, invInfoY, { width: 65, align: 'right' });
+            .text('Challan #', invLblX, invInfoY, { width: 65, align: 'right' });
         doc.font('Helvetica').fontSize(8)
             .text(String(sale.saleNumber || sale.id || ''), invValX, invInfoY, { width: 130, align: 'right' });
 
@@ -120,6 +120,7 @@ class InvoiceService {
             ['Mobile / Home Ph #', formatPhone(sale.customer?.phone)],
             ['Finance Company', sale.financeCompany || 'N/A'],
             ['Payment Type', sale.paymentType || ''],
+            ['Nominee (Ins)', sale.nomineeName ? `${sale.nomineeName} (${sale.nomineeAge || ''}y) - ${sale.nomineeRelation || ''}` : 'N/A'],
             ['Status', sale.status || ''],
         ];
 
@@ -140,13 +141,13 @@ class InvoiceService {
 
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor(BLACK);
         doc.text('S.No', COL.sno, tblHdrY, { width: 25 });
-        doc.text('Model / Color', COL.model, tblHdrY, { width: 150 });
-        doc.text('HSN', COL.hsn, tblHdrY, { width: 50 });
-        doc.text('Engine#', COL.engine, tblHdrY, { width: 95 });
-        doc.text('Chassis#', COL.chassis, tblHdrY, { width: 95 });
-        doc.text('Ex-Showroom', COL.price, tblHdrY, { width: 65 });
-        doc.text('GST%', COL.gst, tblHdrY, { width: 35 });
-        this._rtxt(doc, 'Total', COL.amount, tblHdrY);
+        doc.text('Model / Color', COL.model, tblHdrY, { width: 120 });
+        doc.text('HSN', COL.hsn, tblHdrY, { width: 45 });
+        doc.text('Engine#', COL.engine, tblHdrY, { width: 85 });
+        doc.text('Chassis#', COL.chassis, tblHdrY, { width: 85 });
+        doc.text('Ex-Price', COL.price, tblHdrY, { width: 55 });
+        doc.text('GST', COL.gst, tblHdrY, { width: 55 });
+        this._rtxt(doc, 'Net Total', COL.amount, tblHdrY);
 
         this._hr(doc, tblHdrY + 14, MID_GRAY);
 
@@ -169,36 +170,42 @@ class InvoiceService {
                 ? `${item.model?.brand || ''} ${item.model?.name || ''} (${item.color || 'Any'})`.trim()
                 : item.accessory?.name || '';
             
-            const engine = item.bike?.engineNumber || '— (PDI Stage)';
-            const chassis = item.bike?.chassisNumber || '— (PDI Stage)';
+            const engine = item.bike?.engineNumber || (isBike ? '— (PDI)' : '—');
+            const chassis = item.bike?.chassisNumber || (isBike ? '— (PDI)' : '—');
             const hsn = isBike ? item.model?.hsnCode || '' : '';
             
             // Snapshot values or fallbacks
-            const exShowroom = item.exShowroomPrice || item.unitPrice || 0;
+            // unitPrice is inclusive!
+            const inclusiveUnitPrice = item.unitPrice || 0;
             const cgstRate = item.cgstRate || 0;
             const sgstRate = item.sgstRate || 0;
             const igstRate = item.igstRate || 0;
             const cessRate = item.cessRate || 0;
-            const combinedGst = cgstRate + sgstRate + igstRate + cessRate;
+            const totalTaxRate = (cgstRate + sgstRate + igstRate + cessRate) / 100;
 
-            totalTaxable += exShowroom * item.quantity;
-            totalCgst += (exShowroom * item.quantity * cgstRate) / 100;
-            totalSgst += (exShowroom * item.quantity * sgstRate) / 100;
-            totalIgst += (exShowroom * item.quantity * igstRate) / 100;
-            totalCess += (exShowroom * item.quantity * cessRate) / 100;
+            // Back-calculate
+            const basePrice = inclusiveUnitPrice / (1 + totalTaxRate);
+            const gstAmountPerUnit = (inclusiveUnitPrice - basePrice);
+            const lineExShowroomTotal = basePrice * item.quantity;
+
+            totalTaxable += lineExShowroomTotal;
+            totalCgst += (lineExShowroomTotal * cgstRate) / 100;
+            totalSgst += (lineExShowroomTotal * sgstRate) / 100;
+            totalIgst += (lineExShowroomTotal * igstRate) / 100;
+            totalCess += (lineExShowroomTotal * cessRate) / 100;
             
             totalRto += (item.rtoCharges || 0);
             totalIns += (item.insuranceCharges || 0);
             totalOther += (item.otherCharges || 0);
 
             doc.text(`${idx + 1}`, COL.sno, rowY, { width: 25 });
-            doc.text(modelName, COL.model, rowY, { width: 150 });
-            doc.text(hsn, COL.hsn, rowY, { width: 50 });
-            doc.text(engine, COL.engine, rowY, { width: 95 });
-            doc.text(chassis, COL.chassis, rowY, { width: 95 });
-            doc.text(`${exShowroom.toFixed(2)}`, COL.price, rowY, { width: 65 });
-            doc.text(`${combinedGst}%`, COL.gst, rowY, { width: 35 });
-            this._rtxt(doc, (item.lineTotal || 0).toFixed(2), COL.amount, rowY);
+            doc.text(modelName, COL.model, rowY, { width: 120 });
+            doc.text(hsn, COL.hsn, rowY, { width: 45 });
+            doc.text(engine, COL.engine, rowY, { width: 85 });
+            doc.text(chassis, COL.chassis, rowY, { width: 85 });
+            doc.text(`${inclusiveUnitPrice.toFixed(2)}`, COL.price, rowY, { width: 55 });
+            doc.text(`${(cgstRate + sgstRate + igstRate + cessRate) || 18}%`, COL.gst, rowY, { width: 55 });
+            this._rtxt(doc, (inclusiveUnitPrice * item.quantity).toFixed(2), COL.amount, rowY);
 
             rowY += 14;
         });
@@ -212,14 +219,6 @@ class InvoiceService {
         const sumLblW = sumValX - sumLblX - 68;
 
         const summaryRows = [
-            { lbl: 'Taxable Value', val: totalTaxable.toFixed(2) },
-            { lbl: 'CGST', val: totalCgst.toFixed(2) },
-            { lbl: 'SGST', val: totalSgst.toFixed(2) },
-            { lbl: 'IGST', val: totalIgst.toFixed(2) },
-            { lbl: 'CESS', val: totalCess.toFixed(2) },
-            { lbl: 'RTO / Registration', val: totalRto.toFixed(2) },
-            { lbl: 'Insurance', val: totalIns.toFixed(2) },
-            { lbl: 'Other Charges', val: totalOther.toFixed(2) },
             { lbl: 'Discount', val: `-${(sale.discountAmount || 0).toFixed(2)}` },
         ];
 
@@ -264,7 +263,15 @@ class InvoiceService {
         doc.font('Helvetica').fontSize(7.5).fillColor(DARK_GRAY)
             .text('Vehicle cost is inclusive of toolkit, owner\'s manual and first aid kit.',
                 MARGIN, rowY + 11);
-        rowY += 26;
+        
+        if (sale.nomineeName) {
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
+                .text(`Nominee Details: ${sale.nomineeName} (Age: ${sale.nomineeAge || '—'}, Relation: ${sale.nomineeRelation || '—'})`, 
+                    MARGIN, rowY + 22);
+            rowY += 34;
+        } else {
+            rowY += 26;
+        }
 
         // ── Reg # row (Bike.registrationNumber) ──────────────────────────────────
         this._hr(doc, rowY, MID_GRAY);
@@ -336,7 +343,7 @@ class InvoiceService {
         doc.font('Helvetica-Bold').fontSize(18).fillColor(BLACK)
             .text('GATE PASS', MARGIN, pgTop + 6, { width: CONTENT_W, align: 'center' });
         doc.font('Helvetica').fontSize(9).fillColor(DARK_GRAY)
-            .text(`Invoice #: ${sale.saleNumber || sale.id}`, MARGIN, pgTop + 28,
+            .text(`Challan #: ${sale.saleNumber || sale.id}`, MARGIN, pgTop + 28,
                 { width: CONTENT_W, align: 'center' });
         doc.font('Helvetica').fontSize(9)
             .text(`Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`,

@@ -20,6 +20,8 @@ class DiscountService {
     return await prisma.discount.create({
       data: {
         name: data.name,
+        description: data.description || null,
+        terms: data.terms || null,
         type: data.type,
         value: parseFloat(data.value),
         upToLimit: data.upToLimit ? parseFloat(data.upToLimit) : null,
@@ -57,22 +59,30 @@ class DiscountService {
   }
 
   async updateDiscount(id, data) {
-    try {
-      return await prisma.discount.update({
-        where: { id },
-        data: {
-          ...data,
-          value: data.value !== undefined ? parseFloat(data.value) : undefined,
-          upToLimit: data.upToLimit !== undefined ? (data.upToLimit ? parseFloat(data.upToLimit) : null) : undefined,
-        },
-      });
-    } catch (error) {
-      if (error.code === 'P2025') {
-        throw { message: 'Discount not found', statusCode: 404 };
-      }
-      throw error;
+  try {
+    return await prisma.discount.update({
+      where: { id },
+      data: {
+        name: data.name,
+        description: data.description,
+        terms: data.terms,
+        type: data.type,
+        value: data.value !== undefined
+          ? parseFloat(data.value)
+          : undefined,
+        upToLimit: data.upToLimit !== undefined
+          ? (data.upToLimit ? parseFloat(data.upToLimit) : null)
+          : undefined,
+        isActive: data.isActive,
+      },
+    });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      throw { message: 'Discount not found', statusCode: 404 };
     }
+    throw error;
   }
+}
 
   async deleteDiscount(id) {
     try {

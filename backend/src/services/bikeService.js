@@ -182,7 +182,40 @@ class BikeService {
     try {
       const bike = await prisma.bike.findUnique({
         where: { id },
-        include: { model: true },
+        include: { 
+          model: true,
+          sale: {
+            include: {
+              customer: {
+                include: {
+                  address: true
+                }
+              }
+            }
+          },
+          saleItems: {
+            where: {
+              sale: {
+                isDeleted: false
+              }
+            },
+            include: {
+              sale: {
+                include: {
+                  customer: {
+                    include: {
+                      address: true
+                    }
+                  }
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 1
+          }
+        },
       });
 
       if (!bike || bike.isDeleted) {

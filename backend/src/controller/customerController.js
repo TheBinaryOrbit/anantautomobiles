@@ -4,9 +4,9 @@ const { ApiResponse } = require('../utils/apiResponse');
 class CustomerController {
   async createCustomer(req, res, next) {
     try {
-      const { name, email, phone, aadhaarNumber, panNumber, addressLine1, addressLine2, city, state, postalCode, country } = req.body;
+      const { name, phone, dob, marriageAnniversary, aadhaarNumber, panNumber, addressLine1, addressLine2, city, state, postalCode, country } = req.body;
 
-      const customerData = { name, email, phone, aadhaarNumber, panNumber };
+      const customerData = { name, phone, dob, marriageAnniversary, aadhaarNumber, panNumber };
       const addressData = { addressLine1, addressLine2, city, state, postalCode, country };
 
       const customer = await customerService.createCustomer(customerData, addressData);
@@ -38,13 +38,13 @@ class CustomerController {
   async updateCustomer(req, res, next) {
     try {
       const { id } = req.params;
-      const { name, email, phone, aadhaarNumber, panNumber, addressLine1, addressLine2, city, state, postalCode, country } = req.body;
+      const { name, phone, dob, marriageAnniversary, aadhaarNumber, panNumber, addressLine1, addressLine2, city, state, postalCode, country } = req.body;
 
       if (!id) {
         return ApiResponse.badRequest(res, 'Customer ID is required');
       }
 
-      const customerData = { name, email, phone, aadhaarNumber, panNumber };
+      const customerData = { name, phone, dob, marriageAnniversary, aadhaarNumber, panNumber };
       const addressData = { addressLine1, addressLine2, city, state, postalCode, country };
 
       const customer = await customerService.updateCustomer(id, customerData, addressData);

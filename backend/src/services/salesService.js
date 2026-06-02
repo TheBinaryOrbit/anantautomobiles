@@ -42,6 +42,19 @@ class SalesService {
       errors.push({ field: 'pendingAmount', message: 'Pending Amount must be a non-negative number' });
     }
 
+    // Exchange data payload level validation
+    if (data.exchangeData) {
+      const ex = data.exchangeData;
+      if (!ex.oldBikeName || ex.oldBikeName.trim() === '') errors.push({ field: 'exchangeData.oldBikeName', message: 'Exchange bike name is required' });
+      if (!ex.oldBikeBrand || ex.oldBikeBrand.trim() === '') errors.push({ field: 'exchangeData.oldBikeBrand', message: 'Exchange bike brand is required' });
+      if (!ex.oldBikeModel || ex.oldBikeModel.trim() === '') errors.push({ field: 'exchangeData.oldBikeModel', message: 'Exchange bike model is required' });
+      if (!ex.oldBikeColor || ex.oldBikeColor.trim() === '') errors.push({ field: 'exchangeData.oldBikeColor', message: 'Exchange bike color is required' });
+      if (!ex.oldBikeYear || typeof ex.oldBikeYear !== 'number') errors.push({ field: 'exchangeData.oldBikeYear', message: 'Valid exchange bike manufacturing year is required' });
+      if (ex.exchangeValue === undefined || typeof ex.exchangeValue !== 'number' || ex.exchangeValue < 0) {
+        errors.push({ field: 'exchangeData.exchangeValue', message: 'Exchange valuation must be a valid non-negative number' });
+      }
+    }
+
     return errors;
   }
 
@@ -88,7 +101,7 @@ class SalesService {
     if (item.discountAmount === undefined || typeof item.discountAmount !== 'number' || item.discountAmount < 0) {
       errors.push({
         field: `items[${index}].discountAmount`,
-        message: 'Discount Amount must be a non-negative number',
+        message: 'Discount/Exchange Amount must be a non-negative number',
       });
     }
 
@@ -112,7 +125,6 @@ class SalesService {
   async createSale(saleData) {
     const validationErrors = this.validateSalesData(saleData);
 
-    // Validate each item
     if (saleData.items) {
       for (let i = 0; i < saleData.items.length; i++) {
         const itemErrors = this.validateSaleItem(saleData.items[i], i);
@@ -125,33 +137,39 @@ class SalesService {
     }
 
     try {
-      // Check if customer exists
       const customer = await prisma.customer.findUnique({
         where: { id: saleData.customerId },
       });
 
       if (!customer || customer.isDeleted) {
-        throw {
-          field: 'customerId',
-          message: 'Customer not found',
-        };
+        throw { field: 'customerId', message: 'Customer not found' };
       }
 
-      // Calculate totals
+      // Check unique constraints for exchange bike strings before executing transaction blocks
+      if (saleData.exchangeData) {
+        if (!prisma.excahgebikes) throw new Error("Prisma model 'excahgebikes' is not initialized.");
+        
+        if (saleData.exchangeData.oldBikeEngineNumber) {
+          const exEngine = await prisma.excahgebikes.findUnique({ where: { oldBikeEngineNumber: saleData.exchangeData.oldBikeEngineNumber } });
+          if (exEngine) throw { field: 'exchangeData.oldBikeEngineNumber', message: 'Exchange bike engine number already exists' };
+        }
+        if (saleData.exchangeData.oldBikeChassisNumber) {
+          const exChassis = await prisma.excahgebikes.findUnique({ where: { oldBikeChassisNumber: saleData.exchangeData.oldBikeChassisNumber } });
+          if (exChassis) throw { field: 'exchangeData.oldBikeChassisNumber', message: 'Exchange bike chassis number already exists' };
+        }
+      }
+
       let subtotal = 0;
       let totalDiscountAmount = 0;
       let totalTaxAmount = 0;
 
-      // Prepare sale items with line totals
       const saleItemsData = [];
       let totalRtoOverall = 0;
       let totalInsuranceOverall = 0;
       let totalOtherOverall = 0;
 
       for (const item of saleData.items) {
-        // For BIKE items, quantity is always 1
         const quantity = item.itemType === 'BIKE' ? 1 : item.quantity;
-
         let unitPrice = parseFloat(item.unitPrice) || 0;
         let cgstRate = 0;
         let sgstRate = 0;
@@ -161,7 +179,6 @@ class SalesService {
         let insuranceCharges = 0;
         let otherCharges = 0;
 
-        // Verify bike/model/accessory exists
         if (item.itemType === 'BIKE') {
           if (item.bikeId) {
             const bike = await prisma.bike.findUnique({
@@ -171,17 +188,12 @@ class SalesService {
             if (!bike || bike.isDeleted) {
               throw { field: 'items.bikeId', message: `Bike with ID ${item.bikeId} not found` };
             }
-            // Use bike model details
             const model = bike.model;
             unitPrice = model.exShowroomPrice || unitPrice;
             cgstRate = model.cgstRate || 0;
             sgstRate = model.sgstRate || 0;
             igstRate = model.igstRate || 0;
             cessRate = model.cessRate || 0;
-            // RTO is percentage in model, convert to absolute amount for SaleItem
-            rtoCharges = (unitPrice * (model.rtoCharges || 0)) / 100;
-            insuranceCharges = model.insuranceCharges || 0;
-            otherCharges = model.otherCharges || 0;
           } else if (item.modelId) {
             const model = await prisma.bikeModel.findUnique({
               where: { id: item.modelId }
@@ -194,10 +206,6 @@ class SalesService {
             sgstRate = model.sgstRate || 0;
             igstRate = model.igstRate || 0;
             cessRate = model.cessRate || 0;
-            // RTO is percentage in model, convert to absolute amount for SaleItem
-            rtoCharges = (unitPrice * (model.rtoCharges || 0)) / 100;
-            insuranceCharges = model.insuranceCharges || 0;
-            otherCharges = model.otherCharges || 0;
           }
         } else {
           const accessory = await prisma.accessories.findUnique({
@@ -214,16 +222,15 @@ class SalesService {
 
         const itemSubtotal = unitPrice * quantity;
         const itemDiscountTotal = discountAmount * quantity;
-        const taxableValue = (unitPrice - discountAmount) * quantity;
-        const itemTaxAmount = taxableValue * totalTaxRate;
-        const lineTotal = taxableValue + itemTaxAmount + rtoCharges + insuranceCharges + otherCharges;
+        
+        const inclusivePrice = unitPrice - discountAmount;
+        const basePrice = inclusivePrice / (1 + totalTaxRate);
+        const itemTaxAmount = (inclusivePrice - basePrice) * quantity;
+        const lineTotal = (inclusivePrice * quantity) + rtoCharges + insuranceCharges + otherCharges;
 
         subtotal += itemSubtotal;
         totalDiscountAmount += itemDiscountTotal;
         totalTaxAmount += itemTaxAmount;
-        totalRtoOverall += rtoCharges;
-        totalInsuranceOverall += insuranceCharges;
-        totalOtherOverall += otherCharges;
 
         saleItemsData.push({
           itemType: item.itemType,
@@ -247,7 +254,6 @@ class SalesService {
         });
       }
 
-      // Apply global discount if provided
       let globalDiscountAmount = 0;
       if (saleData.discountId) {
         if (!prisma.discount) throw new Error("Prisma model 'discount' is not initialized. Please restart the server.");
@@ -266,40 +272,96 @@ class SalesService {
 
       totalDiscountAmount += globalDiscountAmount;
 
-      const totalAmount = (subtotal - totalDiscountAmount) + totalTaxAmount + 
-                         totalRtoOverall + totalInsuranceOverall + totalOtherOverall;
-      
+      const totalAmount = (subtotal - totalDiscountAmount) + totalRtoOverall + totalInsuranceOverall + totalOtherOverall;
       const pendingAmount = parseFloat(saleData.pendingAmount) || 0;
       const paidAmount = totalAmount - pendingAmount;
       const isPaid = pendingAmount === 0;
 
-      // Status logic: if any item has no bikeId, it's PDI
       const isPDI = saleItemsData.some(it => it.itemType === 'BIKE' && !it.bikeId);
       const status = isPDI ? 'PDI' : (pendingAmount === 0 ? 'CONFIRMED' : 'PENDING');
       const saleNumber = await this.generateSaleNumber();
 
-      // Create sale with items
-      const sale = await prisma.sale.create({
-        data: {
-          saleNumber,
-          customerId: saleData.customerId,
-          discountId: saleData.discountId || null,
-          subtotal,
-          discountAmount: totalDiscountAmount,
-          taxAmount: totalTaxAmount,
-          totalAmount,
-          pendingAmount,
-          paidAmount,
-          financeCompany: saleData.financeCompany || null,
-          isPaid,
-          status,
-          paymentType: saleData.paymentType,
-          paymentMethod: saleData.paymentMethod,
-          notes: saleData.notes || null,
-          items: {
-            create: saleItemsData,
+      // Wrapped execution inside transaction blocks to couple sale creation & exchange validation securely
+      const resultSale = await prisma.$transaction(async (tx) => {
+        const sale = await tx.sale.create({
+          data: {
+            saleNumber,
+            customerId: saleData.customerId,
+            discountId: saleData.discountId || null,
+            subtotal,
+            discountAmount: totalDiscountAmount,
+            taxAmount: totalTaxAmount,
+            totalAmount,
+            pendingAmount,
+            paidAmount,
+            financeCompany: saleData.financeCompany || null,
+            financeExecutiveName: saleData.financeExecutiveName || null,
+            financeExecutivePhone: saleData.financeExecutivePhone || null,
+            nomineeName: saleData.nomineeName || null,
+            nomineeAge: saleData.nomineeAge ? parseInt(saleData.nomineeAge) : null,
+            nomineeRelation: saleData.nomineeRelation || null,
+            isPaid,
+            status,
+            paymentType: saleData.paymentType,
+            paymentMethod: saleData.paymentMethod,
+            notes: saleData.notes || null,
+            items: {
+              create: saleItemsData,
+            },
           },
-        },
+        });
+
+        // If the user checked the exchange toggle, bind the parameters directly to this sale item
+        if (saleData.exchangeData) {
+          await tx.excahgebikes.create({
+            data: {
+              oldBikeName: saleData.exchangeData.oldBikeName,
+              oldBikeBrand: saleData.exchangeData.oldBikeBrand,
+              oldBikeModel: saleData.exchangeData.oldBikeModel,
+              oldBikeColor: saleData.exchangeData.oldBikeColor,
+              oldBikeYear: saleData.exchangeData.oldBikeYear,
+              oldBikeEngineNumber: saleData.exchangeData.oldBikeEngineNumber || null,
+              oldBikeChassisNumber: saleData.exchangeData.oldBikeChassisNumber || null,
+              exchangeValue: saleData.exchangeData.exchangeValue,
+              notes: saleData.exchangeData.notes || null,
+              isOldRCAvailable: saleData.exchangeData.isOldRCAvailable || false,
+              isNocAvailable: saleData.exchangeData.isNocAvailable || false,
+              isOwnerDocumentAvailable: saleData.exchangeData.isOwnerDocumentAvailable || false,
+              isChallanAvailable: saleData.exchangeData.isChallanAvailable || false,
+              isStatmentAvailable: saleData.exchangeData.isStatmentAvailable || false,
+              saleId: sale.id // Linked mapping logic
+            }
+          });
+        }
+
+        return sale;
+      });
+
+      // Update inventory configuration maps
+      for (const item of saleItemsData) {
+        if (item.itemType === 'BIKE' && item.bikeId) {
+          await prisma.bike.update({
+            where: { id: item.bikeId },
+            data: { 
+              status: 'SOLD',
+              saleId: resultSale.id
+            },
+          });
+        } else if (item.itemType === 'ACCESSORY') {
+          await prisma.accessories.update({
+            where: { id: item.accessoryId },
+            data: {
+              quantityInStock: {
+                decrement: item.quantity,
+              },
+            },
+          });
+        }
+      }
+
+      // Re-fetch complete database object structure for invoice integration mappings
+      const fullyLoadedSale = await prisma.sale.findUnique({
+        where: { id: resultSale.id },
         include: {
           customer: { include: { address: true } },
           items: {
@@ -312,33 +374,10 @@ class SalesService {
         },
       });
 
-      // Update inventory and bike status after sale is created
-      for (const item of saleItemsData) {
-        if (item.itemType === 'BIKE' && item.bikeId) {
-          // Update bike status to SOLD
-          await prisma.bike.update({
-            where: { id: item.bikeId },
-            data: { status: 'SOLD' },
-          });
-        } else if (item.itemType === 'ACCESSORY') {
-          // Decrease accessory quantity
-          await prisma.accessories.update({
-            where: { id: item.accessoryId },
-            data: {
-              quantityInStock: {
-                decrement: item.quantity,
-              },
-            },
-          });
-        }
-      }
+      const invoiceInfo = await invoiceService.saveInvoice(fullyLoadedSale);
 
-      // Generate and save invoice
-      const invoiceInfo = await invoiceService.saveInvoice(sale);
-
-      // Update sale with invoice URL
       const updatedSale = await prisma.sale.update({
-        where: { id: sale.id },
+        where: { id: fullyLoadedSale.id },
         data: { invoiceUrl: invoiceInfo.url },
         include: {
           customer: { include: { address: true } },
@@ -360,37 +399,13 @@ class SalesService {
     }
   }
 
-  async getSale(id) {
-    try {
-      const sale = await prisma.sale.findUnique({
-        where: { id },
-        include: {
-          customer: { include: { address: true } },
-          items: {
-            include: {
-              bike: { include: { model: true } },
-              model: true,
-              accessory: true,
-            },
-          },
-        },
-      });
-
-      if (!sale || sale.isDeleted) {
-        throw { message: 'Sale not found', statusCode: 404 };
-      }
-
-      return sale;
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async getAllSales() {
     try {
       const sales = await prisma.sale.findMany({
         where: { isDeleted: false },
         include: {
+          // Correct mapping from your schema
+          exchange: true, 
           customer: { include: { address: true } },
           items: {
             include: {
@@ -407,7 +422,34 @@ class SalesService {
       throw error;
     }
   }
+async getSale(id) {
+    try {
+      const sale = await prisma.sale.findUnique({
+        where: { id },
+        include: {
+          customer: { include: { address: true } },
+          // Correct placement: Root level of Sale
+          exchange: true, 
+          items: {
+            include: {
+              bike: { include: { model: true } },
+              model: true,
+              accessory: true,
+              // Removed exchange from here since SaleItem doesn't have an exchange relation
+            },
+          },
+        },
+      });
 
+      if (!sale || sale.isDeleted) {
+        throw { message: 'Sale not found', statusCode: 404 };
+      }
+
+      return sale;
+    } catch (error) {
+      throw error;
+    }
+  }
   async updateSaleStatus(id, status) {
     const validStatuses = ['PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELLED', 'REFUNDED'];
 
@@ -456,7 +498,6 @@ class SalesService {
       const calculatedPaid = totalAmount - pendingAmount;
       const isPaid = pendingAmount <= 0;
       
-      // Keep status as PDI if it was PDI, otherwise toggle between PENDING/CONFIRMED
       const status = sale.status === 'PDI' ? 'PDI' : (isPaid ? 'CONFIRMED' : 'PENDING');
 
       const updatedSale = await prisma.sale.update({
@@ -490,7 +531,6 @@ class SalesService {
 
   async deleteSale(id) {
     try {
-      // First check if sale exists with all items
       const sale = await prisma.sale.findUnique({
         where: { id },
         include: {
@@ -507,7 +547,6 @@ class SalesService {
         throw { message: 'Sale not found', statusCode: 404 };
       }
 
-      // Update bikes status to AVAILABLE
       for (const item of sale.items) {
         if (item.bikeId) {
           await prisma.bike.update({
@@ -516,7 +555,6 @@ class SalesService {
           });
         }
 
-        // Increase accessory quantity
         if (item.accessoryId) {
           await prisma.accessories.update({
             where: { id: item.accessoryId },
@@ -525,7 +563,14 @@ class SalesService {
         }
       }
 
-      // Soft delete the sale
+      // If a linked exchange entry is found, remove it along with the cascade sequence 
+      if (prisma.excahgebikes) {
+        const exchangeRecord = await prisma.excahgebikes.findUnique({ where: { saleId: id } });
+        if (exchangeRecord) {
+          await prisma.excahgebikes.delete({ where: { saleId: id } });
+        }
+      }
+
       const deletedSale = await prisma.sale.update({
         where: { id },
         data: { isDeleted: true },
@@ -571,15 +616,10 @@ class SalesService {
         throw { statusCode: 400, message: 'Bike is not available or already assigned' };
       }
 
-      // Verify model and color if set in PDI
       if (saleItem.modelId && bike.modelId !== saleItem.modelId) {
         throw { statusCode: 400, message: 'Selected bike model does not match the sale model' };
       }
-      // if (saleItem.color && bike.color !== saleItem.color) {
-      //   throw { statusCode: 400, message: 'Selected bike color does not match the sale color' };
-      // }
 
-      // Update sale item and bike in a transaction
       const updatedSaleItem = await prisma.$transaction(async (tx) => {
         const si = await tx.saleItem.update({
           where: { id },
@@ -602,10 +642,12 @@ class SalesService {
 
         await tx.bike.update({
           where: { id: bikeId },
-          data: { status: 'SOLD' }
+          data: { 
+            status: 'SOLD',
+            saleId: si.saleId
+          }
         });
 
-        // Check if all bikes in this sale are now assigned
         const pendingBikesCount = await tx.saleItem.count({
           where: {
             saleId: si.saleId,
@@ -616,7 +658,6 @@ class SalesService {
 
         let updatedSale = si.sale;
         if (pendingBikesCount === 0) {
-          // If all bikes assigned, update sale status from PDI to PENDING/CONFIRMED
           if (si.sale.status === 'PDI') {
             const newStatus = si.sale.pendingAmount === 0 ? 'CONFIRMED' : 'PENDING';
             updatedSale = await tx.sale.update({
@@ -636,7 +677,6 @@ class SalesService {
           }
         }
 
-        // Regenerate Invoice with actual bike info (engine/chassis)
         const invoiceInfo = await invoiceService.saveInvoice(updatedSale);
         await tx.sale.update({
           where: { id: updatedSale.id },

@@ -9,16 +9,18 @@ class CustomerService {
       errors.push({ field: 'name', message: 'Name is required and cannot be empty' });
     }
 
-    if (!data.email || data.email.trim() === '') {
-      errors.push({ field: 'email', message: 'Email is required and cannot be empty' });
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      errors.push({ field: 'email', message: 'Email must be a valid email address' });
-    }
-
     if (!data.phone || data.phone.trim() === '') {
       errors.push({ field: 'phone', message: 'Phone is required and cannot be empty' });
     } else if (!/^\d{10,}$/.test(data.phone.replace(/\D/g, ''))) {
       errors.push({ field: 'phone', message: 'Phone must be at least 10 digits' });
+    }
+
+    if (!data.dob) {
+      errors.push({ field: 'dob', message: 'Date of Birth is required' });
+    }
+
+    if (!data.aadhaarNumber && !data.panNumber) {
+      errors.push({ field: 'identity', message: 'Either Aadhaar or PAN number is required' });
     }
 
     return errors;
@@ -67,8 +69,9 @@ class CustomerService {
       const customer = await prisma.customer.create({
         data: {
           name: customerData.name,
-          email: customerData.email,
           phone: customerData.phone,
+          dob: customerData.dob ? new Date(customerData.dob) : null,
+          marriageAnniversary: customerData.marriageAnniversary ? new Date(customerData.marriageAnniversary) : null,
           aadhaarNumber: customerData.aadhaarNumber || null,
           panNumber: customerData.panNumber || null,
           addressId: address.id,
@@ -117,8 +120,9 @@ class CustomerService {
         where: { id },
         data: {
           name: customerData.name,
-          email: customerData.email,
           phone: customerData.phone,
+          dob: customerData.dob ? new Date(customerData.dob) : null,
+          marriageAnniversary: customerData.marriageAnniversary ? new Date(customerData.marriageAnniversary) : null,
           aadhaarNumber: customerData.aadhaarNumber || null,
           panNumber: customerData.panNumber || null,
         },
@@ -194,7 +198,6 @@ class CustomerService {
           isDeleted: false,
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
             { phone: { contains: query, mode: 'insensitive' } },
           ],
         },

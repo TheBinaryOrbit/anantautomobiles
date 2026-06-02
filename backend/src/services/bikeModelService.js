@@ -8,6 +8,7 @@ class BikeModelService {
 
     const mandatoryFields = [
       { field: 'name', label: 'Name' },
+      { field: 'modelName', label: 'Model Name' },
       { field: 'brand', label: 'Brand' },
       { field: 'category', label: 'Category' },
       { field: 'fuelType', label: 'Fuel Type' },
@@ -18,7 +19,7 @@ class BikeModelService {
       { field: 'rtoCharges', label: 'RTO Charges' },
       { field: 'insuranceCharges', label: 'Insurance Charges' },
       { field: 'otherCharges', label: 'Other Charges' },
-      { field: 'onRoadPrice', label: 'On-Road Price' },
+      { field: 'purchasePrice', label: 'Purchase Price' },
       { field: 'cgstRate', label: 'CGST' },
       { field: 'sgstRate', label: 'SGST' },
       { field: 'igstRate', label: 'IGST' },
@@ -69,6 +70,7 @@ class BikeModelService {
       const bikeModel = await prisma.bikeModel.create({
         data: {
           name: data.name,
+          modelName: data.modelName,
           brand: data.brand,
           category: data.category,
           imageUrl,
@@ -82,7 +84,7 @@ class BikeModelService {
           rtoCharges: data.rtoCharges ? parseFloat(data.rtoCharges) : null,
           insuranceCharges: data.insuranceCharges ? parseFloat(data.insuranceCharges) : null,
           otherCharges: data.otherCharges ? parseFloat(data.otherCharges) : null,
-          onRoadPrice: data.onRoadPrice ? parseFloat(data.onRoadPrice) : null,
+          purchasePrice: data.purchasePrice ? parseFloat(data.purchasePrice) : null,
           cgstRate: data.cgstRate ? parseFloat(data.cgstRate) : 0,
           sgstRate: data.sgstRate ? parseFloat(data.sgstRate) : 0,
           igstRate: data.igstRate ? parseFloat(data.igstRate) : 0,
@@ -118,6 +120,7 @@ class BikeModelService {
     try {
       const updateData = {
         name: data.name,
+        modelName: data.modelName,
         brand: data.brand,
         category: data.category,
         remark: data.remark || data.description || null,
@@ -130,7 +133,7 @@ class BikeModelService {
         rtoCharges: data.rtoCharges ? parseFloat(data.rtoCharges) : null,
         insuranceCharges: data.insuranceCharges ? parseFloat(data.insuranceCharges) : null,
         otherCharges: data.otherCharges ? parseFloat(data.otherCharges) : null,
-        onRoadPrice: data.onRoadPrice ? parseFloat(data.onRoadPrice) : null,
+        purchasePrice: data.purchasePrice ? parseFloat(data.purchasePrice) : null,
         cgstRate: data.cgstRate ? parseFloat(data.cgstRate) : 0,
         sgstRate: data.sgstRate ? parseFloat(data.sgstRate) : 0,
         igstRate: data.igstRate ? parseFloat(data.igstRate) : 0,
