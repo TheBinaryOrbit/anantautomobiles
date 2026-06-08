@@ -50,6 +50,7 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./src:/app/src
+      - ./prisma:/app/prisma 
     networks:
       - anant_network
     restart: unless-stopped
