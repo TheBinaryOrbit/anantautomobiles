@@ -1,8 +1,8 @@
-// export const API_BASE =  'https://backend.yaytech.in/api';
-// export const STATIC_BASE = 'https://backend.yaytech.in';
+export const API_BASE =  'https://backend.yaytech.in/api';
+export const STATIC_BASE = 'https://backend.yaytech.in';
 
-export const API_BASE =  'http://localhost:3000/api';
-export const STATIC_BASE = 'http://localhost:3000';
+// export const API_BASE =  'http://localhost:3000/api';
+// export const STATIC_BASE = 'http://localhost:3000';
 
 export const STATUS_COLORS = {
   AVAILABLE:  { bg: '#EAF3DE', fg: '#27500A' },
