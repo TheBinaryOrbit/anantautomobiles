@@ -1,31 +1,31 @@
 const express = require('express');
 const roleController = require('../controller/roleController');
-const { authMiddleware, adminCheck } = require('../middleware/auth');
+const { authMiddleware, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
 router.use(authMiddleware);
 
-// Protected routes - require admin access
-router.post('/create', adminCheck, (req, res, next) => roleController.createRole(req, res, next));
-router.put('/:roleId', adminCheck, (req, res, next) => roleController.updateRole(req, res, next));
+// Protected routes - require role management access clearance
+router.post('/create', checkPermission('role_manage'), (req, res, next) => roleController.createRole(req, res, next));
+router.put('/:roleId', checkPermission('role_manage'), (req, res, next) => roleController.updateRole(req, res, next));
 
 // Assign/Remove permissions to/from role
-router.post('/:roleId/assign-permissions', adminCheck, (req, res, next) => 
+router.post('/:roleId/assign-permissions', checkPermission('role_manage'), (req, res, next) => 
   roleController.assignPermissionsToRole(req, res, next)
 );
-router.post('/:roleId/add-permission', adminCheck, (req, res, next) => 
+router.post('/:roleId/add-permission', checkPermission('role_manage'), (req, res, next) => 
   roleController.addPermissionToRole(req, res, next)
 );
-router.delete('/:roleId/permissions/:permissionId', adminCheck, (req, res, next) => 
+router.delete('/:roleId/permissions/:permissionId', checkPermission('role_manage'), (req, res, next) => 
   roleController.removePermissionFromRole(req, res, next)
 );
 
 // Assign/Remove role to/from user
-router.post('/:userId/assign-role', adminCheck, (req, res, next) => 
+router.post('/:userId/assign-role', checkPermission('role_manage'), (req, res, next) => 
   roleController.assignRoleToUser(req, res, next)
 );
-router.delete('/:userId/roles/:roleId', adminCheck, (req, res, next) => 
+router.delete('/:userId/roles/:roleId', checkPermission('role_manage'), (req, res, next) => 
   roleController.removeRoleFromUser(req, res, next)
 );
 

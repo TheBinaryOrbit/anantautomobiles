@@ -86,6 +86,7 @@ model Bike {
   registrationNumber String? @unique
   isRcArrived        Boolean @default(false)
   isNumberPlateReady Boolean @default(false)
+  isInsuranceRecived Boolean @default(false)
 
   model BikeModel @relation(fields: [modelId], references: [id])
 
@@ -169,6 +170,7 @@ model Sale {
   financeCompany        String?
   financeExecutiveName  String?
   financeExecutivePhone String?
+  disbursementAmount     Float?
 
   isPaid        Boolean       @default(false)
   paymentType   paymentType
@@ -207,6 +209,8 @@ model Discount {
   type      DiscountType
   value     Float
   upToLimit Float?
+
+  imageUrl String?
 
   isActive  Boolean @default(true)
   isDeleted Boolean @default(false)
@@ -435,6 +439,9 @@ model ServiceInquiry {
   isPaid        String   // "paid" or "free"
   freeServiceId String?  // Optional id if it matches a coupon or booklet
 
+  isResolved    Boolean  @default(false)
+  remarks       String?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -447,6 +454,23 @@ model SalesInquiry {
   city      String
   state     String
   pincode   String
+
+  latitude      Float? 
+  longitude     Float?
+
+  isResolved    Boolean  @default(false)
+  remarks       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model gallary {
+  id String @id @default(uuid())
+
+  title       String
+  description String?
+  imageUrl    String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

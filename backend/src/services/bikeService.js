@@ -111,6 +111,7 @@ class BikeService {
           registrationNumber: data.registrationNumber !== undefined ? data.registrationNumber : undefined,
           isRcArrived: data.isRcArrived !== undefined ? data.isRcArrived : undefined,
           isNumberPlateReady: data.isNumberPlateReady !== undefined ? data.isNumberPlateReady : undefined,
+          isInsuranceRecived: data.isInsuranceRecived !== undefined ? data.isInsuranceRecived : undefined,
         },
         include: { model: true },
       });

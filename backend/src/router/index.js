@@ -12,6 +12,7 @@ const permissionRouter = require('./permissionRouter');
 const discountRouter = require('./discountRouter');
 const exchangeBikeRouter = require('./exchangeBikeRoutes');
 const inquiryRouter = require('./inquiryRoutes');
+const galleryRouter = require('./galleryRouter');
 
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use('/permissions', permissionRouter);
 router.use('/discounts', discountRouter);
 router.use('/exchange-bikes', exchangeBikeRouter);
 router.use('/inquiries', inquiryRouter);
+router.use('/gallery', galleryRouter);
 
 module.exports = router;

@@ -1,7 +1,6 @@
 const prisma = require('../src/config/db.js');
 const bcrypt = require('bcryptjs');
 
-
 const permissions = [
     // ─── User Management ───
     { module: 'users', action: 'create', description: 'Create dashboard users' },
@@ -76,6 +75,11 @@ const permissions = [
     { module: 'reports', action: 'view', description: 'Generate audit ledger files' },
     { module: 'analytics', action: 'view', description: 'Analyze performance matrices' },
     { module: 'role', action: 'manage', description: 'Modify systemic role permissions sets' },
+
+    // ─── Gallery Management ───
+    { module: 'gallery', action: 'create', description: 'Upload and attach fresh items into the public gallery' },
+    { module: 'gallery', action: 'view', description: 'Inspect media file nodes and asset items lists' },
+    { module: 'gallery', action: 'delete', description: 'Purge media assets from public viewing logs' },
 ];
 
 const roles = [
@@ -97,14 +101,15 @@ const roles = [
     },
     {
         name: 'INVENTORY_MANAGER',
-        description: 'Warehouse dispatcher managing vehicle catalogs, inflows, and hardware stocks',
+        description: 'Warehouse dispatcher managing vehicle catalogs, inflows, hardware stocks, and media galleries',
         permissions: [
             'bikeModel_create', 'bikeModel_view', 'bikeModel_edit', 'bikeModel_delete',
             'bike_create', 'bike_view', 'bike_edit', 'bike_delete', 'bike_markBooked',
             'purchases_create', 'purchases_view', 'purchases_remove',
             'accessories_create', 'accessories_view', 'accessories_edit', 'accessories_delete', 'accessories_updateQuantity',
             'supplier_view', 'supplier_create', 'supplier_edit',
-            'exchange_view', 'exchange_edit'
+            'exchange_view', 'exchange_edit',
+            'gallery_create', 'gallery_view', 'gallery_delete' // Full operations for showroom media
         ],
     },
     {
@@ -118,7 +123,8 @@ const roles = [
             'accessories_view',
             'discounts_view',
             'exchange_create', 'exchange_view',
-            'salesInquiry_view'
+            'salesInquiry_view',
+            'gallery_view' // Allowed to view media catalog parameters to present to clients
         ],
     },
     {
@@ -138,7 +144,7 @@ const roles = [
             'users_view', 'bikeModel_view', 'bike_view', 'purchases_view',
             'accessories_view', 'customer_view', 'supplier_view', 'sales_view',
             'discounts_view', 'exchange_view', 'serviceInquiry_view', 'salesInquiry_view',
-            'reports_view'
+            'reports_view', 'gallery_view' // Added gallery layout stream to view items
         ],
     },
 ];

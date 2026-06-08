@@ -3,8 +3,12 @@ const { ApiResponse } = require('../utils/apiResponse');
 
 class DiscountController {
   async createDiscount(req, res, next) {
+    const file = req.file;
+    if (!file) {
+      return ApiResponse.badRequest(res, 'Image file is required');
+    }
     try {
-      const discount = await discountService.createDiscount(req.body);
+      const discount = await discountService.createDiscount(req.body, file);
       return ApiResponse.created(res, 'Discount created successfully', discount);
     } catch (error) {
       return ApiResponse.badRequest(res, error.message);
@@ -45,7 +49,8 @@ class DiscountController {
   async updateDiscount(req, res, next) {
     try {
       const { id } = req.params;
-      const discount = await discountService.updateDiscount(id, req.body);
+      const file = req.file;
+      const discount = await discountService.updateDiscount(id, req.body, file);
       return ApiResponse.success(res, 'Discount updated successfully', discount);
     } catch (error) {
       if (error.statusCode === 404) {

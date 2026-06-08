@@ -1,19 +1,19 @@
 const express = require('express');
 const salesController = require('../controller/salesController');
-const { authMiddleware, adminCheck } = require('../middleware/auth');
+const { authMiddleware, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Public routes - GET
-router.get('/', (req, res, next) => salesController.getAllSales(req, res, next));
-router.get('/:id', (req, res, next) => salesController.getSale(req, res, next));
+// View routes protected by view permissions
+router.get('/', authMiddleware, checkPermission('sales_view'), (req, res, next) => salesController.getAllSales(req, res, next));
+router.get('/:id', authMiddleware, checkPermission('sales_view'), (req, res, next) => salesController.getSale(req, res, next));
+router.get('/:id/pdi-slip', authMiddleware, checkPermission('sales_view'), (req, res, next) => salesController.generatePDISlip(req, res, next));
 
-// Admin protected routes
-router.post('/create', authMiddleware, adminCheck, (req, res, next) => salesController.createSale(req, res, next));
-router.get('/:id/pdi-slip', authMiddleware, adminCheck, (req, res, next) => salesController.generatePDISlip(req, res, next));
-router.patch('/items/:id/assign-bike', authMiddleware, adminCheck, (req, res, next) => salesController.assignBike(req, res, next));
-router.patch('/:id/status', authMiddleware, adminCheck, (req, res, next) => salesController.updateSaleStatus(req, res, next));
-router.patch('/:id/pending', authMiddleware, adminCheck, (req, res, next) => salesController.updatePendingAmount(req, res, next));
-router.delete('/:id', authMiddleware, adminCheck, (req, res, next) => salesController.deleteSale(req, res, next));
+// Operational and checkout mutative routes
+router.post('/create', authMiddleware, checkPermission('sales_create'), (req, res, next) => salesController.createSale(req, res, next));
+router.patch('/items/:id/assign-bike', authMiddleware, checkPermission('sales_edit'), (req, res, next) => salesController.assignBike(req, res, next));
+router.patch('/:id/status', authMiddleware, checkPermission('sales_updateStatus'), (req, res, next) => salesController.updateSaleStatus(req, res, next));
+router.patch('/:id/pending', authMiddleware, checkPermission('sales_edit'), (req, res, next) => salesController.updatePendingAmount(req, res, next));
+router.delete('/:id', authMiddleware, checkPermission('sales_delete'), (req, res, next) => salesController.deleteSale(req, res, next));
 
 module.exports = router;

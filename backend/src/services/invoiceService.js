@@ -14,14 +14,14 @@ const MID_GRAY = '#cccccc';
 
 
 const COL = {
-  sno: MARGIN,
-  model: MARGIN + 25,
-  hsn: MARGIN + 145,
-  engine: MARGIN + 195,
-  chassis: MARGIN + 285,
-  price: MARGIN + 375, // Ex-showroom
-  gst: MARGIN + 435,   // GST Amt
-  amount: PAGE_W - MARGIN  // lineTotal
+    sno: MARGIN,
+    model: MARGIN + 25,
+    hsn: MARGIN + 145,
+    engine: MARGIN + 195,
+    chassis: MARGIN + 285,
+    price: MARGIN + 375, // Ex-showroom
+    gst: MARGIN + 435,   // GST Amt
+    amount: PAGE_W - MARGIN  // lineTotal
 };
 
 /** Format raw phone digits → +91 XXXXX XXXXX */
@@ -53,7 +53,9 @@ class InvoiceService {
     }
 
     _drawLogo(doc, x, y, w = 130, h = 40) {
-        const logoPath = path.join(__dirname, 'anant-hero-logo.png');
+        
+        const logoPath = path.join(__dirname, '../../public/Logo_header.jpeg');
+        console.log('Looking for logo at:', logoPath);
         if (fs.existsSync(logoPath)) {
             doc.image(logoPath, x, y, { width: w, height: h });
         } else {
@@ -64,28 +66,22 @@ class InvoiceService {
     }
 
     // ─── PAGE 1: TAX INVOICE ──────────────────────────────────────────────────
-    _buildInvoicePage(doc, sale) {
-        const pgTop = 30;
-
+    // ─── PAGE 1: DELIVERY CHALLAN (UPPER SECTION) ────────────────────────────
+    // ─── PAGE 1: TAX INVOICE / DELIVERY CHALLAN (UPPER SECTION) ──────────────
+    _buildInvoicePage(doc, sale, startY = 30) {
         // ── Logo ──────────────────────────────────────────────────────────────────
-        this._drawLogo(doc, MARGIN, pgTop, 120, 38);
-
-        // ── Dealership block (top-left) ───────────────────────────────────────────
-        const addrTop = pgTop + 44;
-        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK)
-            .text('ANANT HERO AUTOMOBILES', MARGIN, addrTop);
-        doc.font('Helvetica').fontSize(8).fillColor(DARK_GRAY)
-            .text('Authorized Dealer: Hero MotoCorp Ltd.', MARGIN, doc.y);
-
-
+        this._drawLogo(doc, MARGIN, startY, 120, 38);
 
         // ── Invoice # / Date (top-right) ─────────────────────────────────────────
-        const invInfoY = pgTop + 36;
+        const invInfoY = startY + 36;
         const invLblX = PAGE_W - MARGIN - 200;
         const invValX = PAGE_W - MARGIN - 130;
 
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(RED)
+            .text('CHALLAN', invLblX, invInfoY - 14, { width: 200, align: 'right' });
+
         doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK)
-            .text('Challan #', invLblX, invInfoY, { width: 65, align: 'right' });
+            .text('Challan NO.', invLblX, invInfoY, { width: 65, align: 'right' });
         doc.font('Helvetica').fontSize(8)
             .text(String(sale.saleNumber || sale.id || ''), invValX, invInfoY, { width: 130, align: 'right' });
 
@@ -95,33 +91,28 @@ class InvoiceService {
             .text(new Date(sale.saleDate).toLocaleString('en-IN'),
                 invValX, invInfoY + 13, { width: 130, align: 'right' });
 
-
-        // ── Red divider ───────────────────────────────────────────────────────────
-        const divY = addrTop + 52;
+        // Fix for undefined addrTop variable from the original code
+        const addrTop = startY + 44; 
+        const divY = addrTop + 35;
         this._hr(doc, divY, RED, 1.5);
 
         // ── Customer info grid ────────────────────────────────────────────────────
-        const gridTop = divY + 7;
+        const gridTop = divY + 8;
         const LBL_W = 105;
-        const VAL_W = 175;
+        const VAL_W = 350;
 
         const addr = sale.customer?.address || {};
-
-        console.log(addr);
         const addrStr = [
             addr.addressLine1, addr.addressLine2,
             addr.city, addr.state, addr.postalCode,
         ].filter(Boolean).join(', ');
 
         const rows = [
-            ['Place of Supply', `${addr.state || ''}${addr.postalCode ? ', ' + addr.postalCode : ''}`],
-            ['Name of the Customer', sale.customer?.name || ''],
-            ['Address', addrStr],
-            ['Mobile / Home Ph #', formatPhone(sale.customer?.phone)],
+            ['Customer Name', sale.customer?.name || ''],
+            ['Mobile / Contact', formatPhone(sale.customer?.phone)],
+            ['Address Address', addrStr],
             ['Finance Company', sale.financeCompany || 'N/A'],
             ['Payment Type', sale.paymentType || ''],
-            ['Nominee (Ins)', sale.nomineeName ? `${sale.nomineeName} (${sale.nomineeAge || ''}y) - ${sale.nomineeRelation || ''}` : 'N/A'],
-            ['Status', sale.status || ''],
         ];
 
         let gy = gridTop;
@@ -130,455 +121,197 @@ class InvoiceService {
                 .text(lbl, MARGIN, gy, { width: LBL_W });
             doc.font('Helvetica').fontSize(8).fillColor(BLACK)
                 .text(val, MARGIN + LBL_W + 4, gy, { width: VAL_W });
-            gy += 13;
+            gy += 12;
         });
 
-        this._hr(doc, gy + 3, MID_GRAY);
+        this._hr(doc, gy + 4, MID_GRAY);
 
-        // ── Items table header ────────────────────────────────────────────────────
-        const tblHdrY = gy + 8;
+        // ── Items table header (Simplified Columns) ───────────────────────────────
+        const tblHdrY = gy + 10;
         doc.fillColor(LIGHT_GRAY).rect(MARGIN, tblHdrY - 2, CONTENT_W, 14).fill();
 
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(BLACK);
-        doc.text('S.No', COL.sno, tblHdrY, { width: 25 });
-        doc.text('Model / Color', COL.model, tblHdrY, { width: 120 });
-        doc.text('HSN', COL.hsn, tblHdrY, { width: 45 });
-        doc.text('Engine#', COL.engine, tblHdrY, { width: 85 });
-        doc.text('Chassis#', COL.chassis, tblHdrY, { width: 85 });
-        doc.text('Ex-Price', COL.price, tblHdrY, { width: 55 });
-        doc.text('GST', COL.gst, tblHdrY, { width: 55 });
-        this._rtxt(doc, 'Net Total', COL.amount, tblHdrY);
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK);
+        doc.text('S.No', MARGIN, tblHdrY, { width: 30 });
+        doc.text('Bike Description & Accessories', MARGIN + 40, tblHdrY, { width: 200 });
+        doc.text('Engine No.', MARGIN + 260, tblHdrY, { width: 110 });
+        doc.text('Chassis No.', MARGIN + 380, tblHdrY, { width: 110 });
+        this._rtxt(doc, 'Qty', PAGE_W - MARGIN, tblHdrY, 25);
 
         this._hr(doc, tblHdrY + 14, MID_GRAY);
 
-        // ── Items rows ────────────────────────────────────────────────────────────
+        // ── Items rows (With Dynamic Heights & Alternating Colors) ────────────────
         let rowY = tblHdrY + 18;
-        doc.font('Helvetica').fontSize(7.5).fillColor(BLACK);
-
-        let totalRto = 0;
-        let totalIns = 0;
-        let totalOther = 0;
-        let totalCgst = 0;
-        let totalSgst = 0;
-        let totalIgst = 0;
-        let totalCess = 0;
-        let totalTaxable = 0;
 
         sale.items.forEach((item, idx) => {
             const isBike = item.itemType === 'BIKE';
             const modelName = isBike
                 ? `${item.model?.brand || ''} ${item.model?.name || ''} (${item.color || 'Any'})`.trim()
                 : item.accessory?.name || '';
-            
+
             const engine = item.bike?.engineNumber || (isBike ? '— (PDI)' : '—');
             const chassis = item.bike?.chassisNumber || (isBike ? '— (PDI)' : '—');
-            const hsn = isBike ? item.model?.hsnCode || '' : '';
+
+            // Calculate the height required for the item name text blocks
+            const textWidth = 200;
+            doc.font('Helvetica').fontSize(8);
+            const textHeight = doc.heightOfString(modelName, { width: textWidth });
             
-            // Snapshot values or fallbacks
-            // unitPrice is inclusive!
-            const inclusiveUnitPrice = item.unitPrice || 0;
-            const cgstRate = item.cgstRate || 0;
-            const sgstRate = item.sgstRate || 0;
-            const igstRate = item.igstRate || 0;
-            const cessRate = item.cessRate || 0;
-            const totalTaxRate = (cgstRate + sgstRate + igstRate + cessRate) / 100;
+            // Define minimum row height and add vertical padding
+            const padding = 6;
+            const rowHeight = Math.max(14, textHeight + padding);
 
-            // Back-calculate
-            const basePrice = inclusiveUnitPrice / (1 + totalTaxRate);
-            const gstAmountPerUnit = (inclusiveUnitPrice - basePrice);
-            const lineExShowroomTotal = basePrice * item.quantity;
-
-            totalTaxable += lineExShowroomTotal;
-            totalCgst += (lineExShowroomTotal * cgstRate) / 100;
-            totalSgst += (lineExShowroomTotal * sgstRate) / 100;
-            totalIgst += (lineExShowroomTotal * igstRate) / 100;
-            totalCess += (lineExShowroomTotal * cessRate) / 100;
-            
-            totalRto += (item.rtoCharges || 0);
-            totalIns += (item.insuranceCharges || 0);
-            totalOther += (item.otherCharges || 0);
-
-            doc.text(`${idx + 1}`, COL.sno, rowY, { width: 25 });
-            doc.text(modelName, COL.model, rowY, { width: 120 });
-            doc.text(hsn, COL.hsn, rowY, { width: 45 });
-            doc.text(engine, COL.engine, rowY, { width: 85 });
-            doc.text(chassis, COL.chassis, rowY, { width: 85 });
-            doc.text(`${inclusiveUnitPrice.toFixed(2)}`, COL.price, rowY, { width: 55 });
-            doc.text(`${(cgstRate + sgstRate + igstRate + cessRate) || 18}%`, COL.gst, rowY, { width: 55 });
-            this._rtxt(doc, (inclusiveUnitPrice * item.quantity).toFixed(2), COL.amount, rowY);
-
-            rowY += 14;
-        });
-
-        this._hr(doc, rowY, MID_GRAY);
-        rowY += 7;
-
-        // ── Summary block ─────────────────────────────────────────────────────────
-        const sumLblX = MARGIN + 248;
-        const sumValX = PAGE_W - MARGIN;
-        const sumLblW = sumValX - sumLblX - 68;
-
-        const summaryRows = [
-            { lbl: 'Discount', val: `-${(sale.discountAmount || 0).toFixed(2)}` },
-        ];
-
-        doc.font('Helvetica').fontSize(8).fillColor(BLACK);
-        summaryRows.forEach(({ lbl, val }) => {
-            if (parseFloat(val) !== 0) {
-                doc.text(lbl, sumLblX, rowY, { width: sumLblW });
-                this._rtxt(doc, val, sumValX, rowY);
-                rowY += 13;
+            // Alternating row background color strip
+            if (idx % 2 === 1) {
+                doc.fillColor('#f9f9f9').rect(MARGIN, rowY - (padding / 2), CONTENT_W, rowHeight).fill();
             }
+
+            // Draw content text
+            doc.fillColor(BLACK);
+            doc.text(`${idx + 1}`, MARGIN, rowY, { width: 30 });
+            doc.text(modelName, MARGIN + 40, rowY, { width: textWidth });
+            doc.text(engine, MARGIN + 260, rowY, { width: 110 });
+            doc.text(chassis, MARGIN + 380, rowY, { width: 110 });
+            this._rtxt(doc, String(item.quantity || 1), PAGE_W - MARGIN, rowY, 25);
+
+            rowY += rowHeight;
         });
 
         this._hr(doc, rowY, MID_GRAY);
-        rowY += 4;
+        rowY += 8;
 
-        // Grand Total highlighted row
-        doc.fillColor(LIGHT_GRAY).rect(MARGIN, rowY - 2, CONTENT_W, 17).fill();
-        doc.font('Helvetica-Bold').fontSize(9).fillColor(BLACK)
-            .text('Grand Total', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, (sale.totalAmount || 0).toFixed(2), sumValX, rowY);
-        rowY += 17;
+        // ── Summary Financial Block ───────────────────────────────────────────────
+        const sumLblX = PAGE_W - MARGIN - 220;
+        const sumValX = PAGE_W - MARGIN;
+        const sumLblW = 120;
 
-        // Paid & Pending
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#10b981')
-            .text('Paid Amount', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, (sale.paidAmount || 0).toFixed(2), sumValX, rowY);
-        rowY += 13;
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#f59e0b')
-            .text('Pending Amount', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, (sale.pendingAmount || 0).toFixed(2), sumValX, rowY);
-        rowY += 17;
-
-        // Round Off
-
-
-        this._hr(doc, rowY, RED, 1);
-        rowY += 7;
-
-        // ── Amount in words ───────────────────────────────────────────────────────
-        doc.font('Helvetica').fontSize(8).fillColor(DARK_GRAY)
-            .text(`Rupees ${sale.totalAmount.toFixed(2)} Only`, MARGIN, rowY, { width: CONTENT_W });
-        doc.font('Helvetica').fontSize(7.5).fillColor(DARK_GRAY)
-            .text('Vehicle cost is inclusive of toolkit, owner\'s manual and first aid kit.',
-                MARGIN, rowY + 11);
+        doc.font('Helvetica').fontSize(8.5).fillColor(BLACK);
         
-        if (sale.nomineeName) {
-            doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
-                .text(`Nominee Details: ${sale.nomineeName} (Age: ${sale.nomineeAge || '—'}, Relation: ${sale.nomineeRelation || '—'})`, 
-                    MARGIN, rowY + 22);
-            rowY += 34;
-        } else {
-            rowY += 26;
-        }
+        // Grand Total Row
+        doc.font('Helvetica-Bold').text('Grand Total:', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, (sale.totalAmount || 0).toFixed(2), sumValX, rowY, 90);
+        rowY += 13;
 
-        // ── Reg # row (Bike.registrationNumber) ──────────────────────────────────
-        this._hr(doc, rowY, MID_GRAY);
-        rowY += 7;
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY)
-            .text('Reg #', MARGIN, rowY, { width: 40 });
-        const regNums = (sale.items || [])
-            .filter(i => i.itemType === 'BIKE' && i.bike?.registrationNumber)
-            .map(i => i.bike.registrationNumber)
-            .join(', ');
-        doc.font('Helvetica').fontSize(8).fillColor(BLACK)
-            .text(regNums || '', MARGIN + 42, rowY, { width: 200 });
-        rowY += 18;
+        // Discount Row
+        doc.font('Helvetica').text('Discount Allowed:', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, `-${(sale.discountAmount || 0).toFixed(2)}`, sumValX, rowY, 90);
+        rowY += 13;
 
-        // ── Signature area ────────────────────────────────────────────────────────
-        this._hr(doc, rowY, MID_GRAY);
-        rowY += 7;
-        const sigY = rowY;
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY)
-            .text("Customer's Signatures", MARGIN, sigY);
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK)
-            .text('For ANANT HERO AUTOMOBILES',
-                PAGE_W - MARGIN - 175, sigY, { width: 175, align: 'right' });
+        // Paid Row
+        doc.font('Helvetica-Bold').fillColor('#10b981').text('Amount Paid:', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, (sale.paidAmount || 0).toFixed(2), sumValX, rowY, 90);
+        rowY += 13;
 
-        rowY = sigY + 42;
+        // Pending Row
+        doc.font('Helvetica-Bold').fillColor('#f59e0b').text('Pending Balance:', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, (sale.pendingAmount || 0).toFixed(2), sumValX, rowY, 90);
+        rowY += 16;
+
         this._hr(doc, rowY, MID_GRAY, 0.5);
-        rowY += 5;
-        doc.font('Helvetica').fontSize(7.5).fillColor(DARK_GRAY)
-            .text('Authorized Signatory',
-                PAGE_W - MARGIN - 120, rowY, { width: 120, align: 'right' });
-        rowY += 18;
+        rowY += 10;
 
-        // ── Go Green banner ───────────────────────────────────────────────────────
-        this._hr(doc, rowY, RED, 1);
-        rowY += 6;
-        doc.fillColor('#1a7a3c').rect(MARGIN, rowY, CONTENT_W, 18).fill();
-        doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff')
-            .text('Go paperless for a greener tomorrow.   #GoGreenWithHero',
-                MARGIN + 6, rowY + 4, { width: CONTENT_W - 12 });
-        rowY += 26;
-
-        // ── Terms & Conditions ────────────────────────────────────────────────────
-        this._hr(doc, rowY, MID_GRAY);
-        rowY += 5;
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK)
-            .text('Terms & Conditions', MARGIN, rowY);
-        rowY += 11;
-        const terms = [
-            'Kindly visit HMCL dealership within 15 days of receipt of Registration Number to get HSRP affixed to the vehicle.',
-            'Goods once sold will not be returned or exchanged under any circumstances.',
-            'The vehicle/documents has been thoroughly inspected, tested and is free of any kind of defect and is upto my satisfaction.',
-            'I have also read the warranty terms and conditions as explained in the owner\'s manual.',
-            'Registration and insurance will be done at the owner\'s risk and liability.',
-            'I have checked my particulars and they are correct to the best of my knowledge.',
-        ];
-        doc.font('Helvetica').fontSize(6.5).fillColor(DARK_GRAY);
-        terms.forEach((t, i) => {
-            doc.text(`${i + 1}. ${t}`, MARGIN + 4, rowY, { width: CONTENT_W - 8 });
-            rowY += 9;
-        });
+        // Signatures for upper part
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY);
+        doc.text("Customer's Acknowledgement Signature", MARGIN, rowY);
+        doc.text('Authorized Signatory (Anant Hero)', PAGE_W - MARGIN - 180, rowY, { width: 180, align: 'right' });
+        
+        return rowY + 25; 
     }
 
-    // ─── PAGE 2: GATE PASS ────────────────────────────────────────────────────
-    _buildGatePassPage(doc, sale) {
-        const pgTop = 30;
+    // ─── PAGE 1: GATE PASS (FIXED TO BOTTOM OF PAGE) ──────────────────────────
+    _buildGatePassPage(doc, sale, startY) {
+        // Set fixed coordinates anchored to the bottom of A4 canvas (Height: 841.89)
+        // Adjust allocated total height for Gate Pass to prevent overflow (~200 points)
+        const GATE_PASS_HEIGHT = 200;
+        let y = 920 - GATE_PASS_HEIGHT - MARGIN;
 
-        // ── Logo + Title ──────────────────────────────────────────────────────────
-        this._drawLogo(doc, MARGIN, pgTop, 100, 30);
-        doc.font('Helvetica-Bold').fontSize(18).fillColor(BLACK)
-            .text('GATE PASS', MARGIN, pgTop + 6, { width: CONTENT_W, align: 'center' });
-        doc.font('Helvetica').fontSize(9).fillColor(DARK_GRAY)
-            .text(`Challan #: ${sale.saleNumber || sale.id}`, MARGIN, pgTop + 28,
-                { width: CONTENT_W, align: 'center' });
-        doc.font('Helvetica').fontSize(9)
-            .text(`Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`,
-                MARGIN, pgTop + 40, { width: CONTENT_W, align: 'center' });
+        // Scissor cutting line implementation
+        doc.font('Helvetica').fontSize(9).fillColor(DARK_GRAY);
+        doc.text('- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  CUT HERE  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -', MARGIN, y);
 
-        const divY = pgTop + 58;
-        this._hr(doc, divY, RED, 1.5);
+        y += 20;
 
-        // ── Customer Details ──────────────────────────────────────────────────────
-        let y = divY + 10;
-        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK)
-            .text('CUSTOMER DETAILS', MARGIN, y);
-        y += 14;
-        this._hr(doc, y, MID_GRAY);
+        // Title and minor tracking codes
+        doc.font('Helvetica-Bold').fontSize(12).fillColor(BLACK)
+            .text('GATE PASS', MARGIN, y);
+        
+        doc.font('Helvetica').fontSize(8).fillColor(DARK_GRAY)
+            .text(`Challan Ref: ${sale.saleNumber || sale.id || ''}  |  Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`, PAGE_W - MARGIN - 250, y, { width: 250, align: 'right' });
+        
+        y += 16;
+        this._hr(doc, y, RED, 1);
         y += 8;
 
-        const addr = sale.customer?.address || {};
-        const addrStr = [
-            addr.addressLine1, addr.addressLine2,
-            addr.city, addr.state, addr.postalCode, addr.country,
-        ].filter(Boolean).join(', ');
+        // Asset items clearance mapping grid
+        const gC1 = MARGIN;
+        const gC2 = MARGIN + 40;
+        const gC3 = MARGIN + 260;
+        const gC4 = MARGIN + 380;
+        const gC5 = PAGE_W - MARGIN;
 
-        const custFields = [
-            ['Name', sale.customer?.name || ''],
-            ['Email', sale.customer?.email || ''],
-            ['Phone', formatPhone(sale.customer?.phone)],
-            ['Address', addrStr],
-        ];
-        custFields.forEach(([lbl, val]) => {
-            doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK_GRAY)
-                .text(`${lbl}:`, MARGIN, y, { width: 55 });
-            doc.font('Helvetica').fontSize(9).fillColor(BLACK)
-                .text(val, MARGIN + 58, y, { width: CONTENT_W - 58 });
-            y += 15;
-        });
-
-        this._hr(doc, y, MID_GRAY);
-        y += 10;
-
-        // ── Items Table ───────────────────────────────────────────────────────────
-        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK).text('ITEMS', MARGIN, y);
-        y += 14;
-
-        // Gate pass columns: # | Description | Engine# | Chassis# | Qty
-        const gC1 = MARGIN;          // #
-        const gC2 = MARGIN + 28;     // Description
-        const gC3 = MARGIN + 190;    // Engine #
-        const gC4 = MARGIN + 330;    // Chassis #
-        const gC5 = PAGE_W - MARGIN; // Qty (right-aligned)
-
-        doc.fillColor(LIGHT_GRAY).rect(MARGIN, y - 2, CONTENT_W, 16).fill();
-        doc.font('Helvetica-Bold').fontSize(9).fillColor(BLACK);
-        doc.text('#', gC1, y, { width: 24 });
-        doc.text('Description', gC2, y, { width: 158 });
-        doc.text('Engine #', gC3, y, { width: 136 });
-        doc.text('Chassis #', gC4, y, { width: 140 });
-        this._rtxt(doc, 'Qty', gC5, y, 35);
-        y += 18;
+        doc.fillColor(LIGHT_GRAY).rect(MARGIN, y - 2, CONTENT_W, 14).fill();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK);
+        doc.text('#', gC1, y, { width: 25 });
+        doc.text('Cleared Item Description', gC2, y, { width: 200 });
+        doc.text('Engine #', gC3, y, { width: 110 });
+        doc.text('Chassis #', gC4, y, { width: 110 });
+        this._rtxt(doc, 'Qty', gC5, y, 25);
+        
+        y += 16;
         this._hr(doc, y - 2, MID_GRAY);
 
-        doc.font('Helvetica').fontSize(9).fillColor(BLACK);
+        doc.font('Helvetica').fontSize(8).fillColor(BLACK);
         sale.items.forEach((item, idx) => {
             const isBike = item.itemType === 'BIKE';
-
-            // Description: brand + model name + color
             const desc = isBike
-                ? `${item.bike?.model?.brand || ''} ${item.bike?.model?.name || ''} (${item.bike?.color || ''})`.trim()
+                ? `${item.model?.brand || ''} ${item.model?.name || ''} (${item.color || 'Any'})`.trim()
                 : item.accessory?.name || '';
 
-            // Engine # and Chassis # in their own columns; accessories get a dash
-            const engineNo = isBike ? (item.bike?.engineNumber || '') : '—';
-            const chassisNo = isBike ? (item.bike?.chassisNumber || '') : '—';
+            const engineNo = isBike ? (item.bike?.engineNumber || '—') : '—';
+            const chassisNo = isBike ? (item.bike?.chassisNumber || '—') : '—';
 
-            const rowStart = y;
-            doc.text(`${idx + 1}`, gC1, y, { width: 24 });
-            doc.text(desc, gC2, y, { width: 158 });
-            doc.text(engineNo, gC3, y, { width: 136 });
-            doc.text(chassisNo, gC4, y, { width: 140 });
-            this._rtxt(doc, String(item.quantity || 1), gC5, rowStart, 35);
+            // Dynamic tracking for Gate pass item wrapping heights
+            const textHeight = doc.heightOfString(desc, { width: 200 });
+            const padding = 4;
+            const gpRowHeight = Math.max(14, textHeight + padding);
 
-            y = Math.max(doc.y, rowStart + 14);
-            y += 5;
-            this._hr(doc, y, '#eeeeee', 0.3);
-            y += 4;
-        });
+            // Alternating rows inside gate pass
+            if (idx % 2 === 1) {
+                doc.fillColor('#f9f9f9').rect(MARGIN, y - (padding / 2), CONTENT_W, gpRowHeight).fill();
+            }
 
-        this._hr(doc, y, MID_GRAY);
-        y += 22;
+            doc.fillColor(BLACK);
+            doc.text(`${idx + 1}`, gC1, y, { width: 25 });
+            doc.text(desc, gC2, y, { width: 200 });
+            doc.text(engineNo, gC3, y, { width: 110 });
+            doc.text(chassisNo, gC4, y, { width: 110 });
+            this._rtxt(doc, String(item.quantity || 1), gC5, y, 25);
 
-        // ── Signature ─────────────────────────────────────────────────────────────
-        doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK_GRAY)
-            .text('Authorized Signature:', MARGIN, y);
-        y += 36;
-        this._hr(doc, y, BLACK, 0.5);
-        y += 5;
-        doc.font('Helvetica').fontSize(8).fillColor(DARK_GRAY)
-            .text('(Gate Officer)', MARGIN, y);
-
-        // ── Footer ────────────────────────────────────────────────────────────────
-        doc.font('Helvetica').fontSize(7).fillColor(DARK_GRAY)
-            .text(`Generated on ${new Date().toLocaleString('en-IN')}`,
-                MARGIN, y + 22, { width: CONTENT_W, align: 'right' });
-        this._hr(doc, y + 36, RED, 1);
-    }
-
-    // ─── PAGE 3: PDI SLIP ─────────────────────────────────────────────────────
-    _buildPDISlipPage(doc, sale) {
-        const pgTop = 30;
-
-        // ── Logo + Title ──────────────────────────────────────────────────────────
-        this._drawLogo(doc, MARGIN, pgTop, 100, 30);
-        doc.font('Helvetica-Bold').fontSize(18).fillColor(BLACK)
-            .text('PDI SLIP', MARGIN, pgTop + 6, { width: CONTENT_W, align: 'center' });
-        doc.font('Helvetica').fontSize(9).fillColor(DARK_GRAY)
-            .text(`Sale Ref: ${sale.id?.slice(0, 8).toUpperCase()}`, MARGIN, pgTop + 28,
-                { width: CONTENT_W, align: 'center' });
-        doc.font('Helvetica').fontSize(9)
-            .text(`Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`,
-                MARGIN, pgTop + 40, { width: CONTENT_W, align: 'center' });
-
-        const divY = pgTop + 58;
-        this._hr(doc, divY, RED, 1.5);
-
-        // ── Customer Details ──────────────────────────────────────────────────────
-        let y = divY + 10;
-        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK)
-            .text('CUSTOMER DETAILS', MARGIN, y);
-        y += 14;
-        this._hr(doc, y, MID_GRAY);
-        y += 8;
-
-        const custFields = [
-            ['Name', sale.customer?.name || ''],
-            ['Phone', formatPhone(sale.customer?.phone)],
-        ];
-        custFields.forEach(([lbl, val]) => {
-            doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK_GRAY)
-                .text(`${lbl}:`, MARGIN, y, { width: 55 });
-            doc.font('Helvetica').fontSize(9).fillColor(BLACK)
-                .text(val, MARGIN + 58, y, { width: CONTENT_W - 58 });
-            y += 15;
+            y += gpRowHeight;
         });
 
         this._hr(doc, y, MID_GRAY);
         y += 15;
 
-        // ── Vehicle Details (PDI focused) ─────────────────────────────────────────
-        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK).text('VEHICLE DETAILS', MARGIN, y);
-        y += 14;
-        this._hr(doc, y, MID_GRAY);
-        y += 10;
-
-        const bikeItems = (sale.items || []).filter(it => it.itemType === 'BIKE');
-        
-        bikeItems.forEach((item, idx) => {
-            doc.font('Helvetica-Bold').fontSize(10).fillColor(BLACK)
-                .text(`Vehicle #${idx + 1}`, MARGIN, y);
-            y += 16;
-
-            const fields = [
-                ['Model', `${item.model?.brand || ''} ${item.model?.name || ''}`],
-                ['Color', item.color || 'Any'],
-                ['Engine #', '___________________________ (Fill at PDI)'],
-                ['Chassis #', '___________________________ (Fill at PDI)'],
-                ['Key Number', '___________________________'],
-                ['Battery Number', '___________________________'],
-                ['Tyre Make', '___________________________'],
-            ];
-
-            fields.forEach(([lbl, val]) => {
-                doc.font('Helvetica-Bold').fontSize(9).fillColor(DARK_GRAY)
-                    .text(`${lbl}:`, MARGIN + 10, y, { width: 80 });
-                doc.font('Helvetica').fontSize(9).fillColor(BLACK)
-                    .text(val, MARGIN + 95, y, { width: CONTENT_W - 105 });
-                y += 18;
-            });
-            y += 5;
-        });
-
-        this._hr(doc, y, MID_GRAY);
-        y += 20;
-
-        // ── PDI Checklist Placeholder ─────────────────────────────────────────────
-        doc.font('Helvetica-Bold').fontSize(11).fillColor(BLACK).text('PDI CHECKLIST', MARGIN, y);
-        y += 16;
-        
-        const checks = [
-            'Battery Voltage Checked & Charged',
-            'Engine Oil Level Checked',
-            'Tyre Pressure Checked',
-            'All Electrical Functions (Lights, Horn, etc.) Checked',
-            'Brakes & Clutch Adjustment Checked',
-            'Toolkit & Owners Manual Included',
-            'First Aid Kit Included',
-            'Vehicle Cleaned & Polished'
-        ];
-
-        checks.forEach(check => {
-            doc.rect(MARGIN + 5, y - 1, 8, 8).stroke();
-            doc.font('Helvetica').fontSize(8.5).fillColor(BLACK)
-                .text(check, MARGIN + 18, y);
-            y += 14;
-        });
-
-        y += 20;
-        
-        // ── Signatures ────────────────────────────────────────────────────────────
-        const sigY = y;
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY)
-            .text("PDI Engineer Sign", MARGIN, sigY);
-        doc.font('Helvetica-Bold').fontSize(8)
-            .text("Customer's Acknowledgment", PAGE_W - MARGIN - 150, sigY, { width: 150, align: 'right' });
-        
-        y += 35;
-        this._hr(doc, y, MID_GRAY, 0.5);
-        y += 5;
-        doc.font('Helvetica').fontSize(7).fillColor(DARK_GRAY)
-            .text(`Generated on ${new Date().toLocaleString('en-IN')}`,
-                MARGIN, y, { width: CONTENT_W, align: 'right' });
-
-        this._hr(doc, y + 15, RED, 1);
+        // Fast clean approval stamps lines
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY);
+        doc.text('Store In-Charge Signature: ____________________', MARGIN, y);
+        doc.text('Gate Security Guard: ____________________', PAGE_W - MARGIN - 200, y, { width: 200, align: 'right' });
     }
 
     // ─── Main PDF generation ───────────────────────────────────────────────────
     generateInvoicePDF(sale, filePath) {
         return new Promise((resolve, reject) => {
             try {
+                // Initializing default single A4 frame structure 
                 const doc = new PDFDocument({ margin: 0, size: 'A4' });
                 const stream = fs.createWriteStream(filePath);
                 doc.pipe(stream);
 
-                this._buildInvoicePage(doc, sale);
+                // Build delivery challan configuration area (Upper Side)
+                const endOfUpperPartY = this._buildInvoicePage(doc, sale, 30);
 
-                doc.addPage({ margin: 0, size: 'A4' });
-                this._buildGatePassPage(doc, sale);
+                // Build simplified matching Gate Pass element inside remaining single space
+                this._buildGatePassPage(doc, sale, endOfUpperPartY);
 
                 doc.end();
                 stream.on('finish', resolve);
@@ -587,6 +320,219 @@ class InvoiceService {
                 reject(err);
             }
         });
+    }
+
+
+    // ─── PAGE 3: PDI SLIP ─────────────────────────────────────────────────────
+    _buildPDISlipPage(doc, sale) {
+        const pgTop = 24;
+        const COL2_X = MARGIN + CONTENT_W / 2 + 6;
+        const COL_W = CONTENT_W / 2 - 6;
+
+        // ── Header Band ──────────────────────────────────────────────────────────
+        // doc.rect(MARGIN, pgTop, CONTENT_W, 38).fill(WHITE);
+
+        this._drawLogo(doc, MARGIN + 8, pgTop + 4, 90, 28);
+
+        doc.font('Helvetica-Bold').fontSize(16).fillColor('RED')
+            .text('PRE-DELIVERY INSPECTION', MARGIN, pgTop + 4, { width: CONTENT_W, align: 'center' });
+            // sale number 
+        doc.font('Helvetica').fontSize(8).fillColor('rgba(255,255,255,0.85)')
+            .text(`Sale Number: ${sale?.saleNumber || 'N/A'}`, MARGIN, pgTop + 26, { width: CONTENT_W, align: 'center' });
+
+        // ── Sub-header pill row ───────────────────────────────────────────────────
+        let y = pgTop + 48;
+        const pillH = 18;
+        doc.roundedRect(MARGIN, y, CONTENT_W, pillH, 4).fill('#F5F5F5');
+
+        const refText = `REF: ${sale.id?.slice(0, 8).toUpperCase() || 'N/A'}`;
+        const dateText = `DATE: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`;
+        const genText = `GENERATED: ${new Date().toLocaleString('en-IN')}`;
+
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
+            .text(refText, MARGIN + 8, y + 5)
+            .text(dateText, MARGIN + CONTENT_W / 2 - 30, y + 5)
+            .text(genText, PAGE_W - MARGIN - 140, y + 5, { width: 140, align: 'right' });
+
+        y += pillH + 12;
+
+        // ── SECTION HEADER helper ─────────────────────────────────────────────────
+        const sectionHeader = (title, yPos) => {
+            doc.rect(MARGIN, yPos, CONTENT_W, 16).fill('#FFFFFF');
+            doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF')
+                .text(title, MARGIN + 8, yPos + 4);
+            return yPos + 22;
+        };
+
+        // ── KEY-VALUE helper ──────────────────────────────────────────────────────
+        const kv = (label, value, x, yPos, w) => {
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
+                .text(label.toUpperCase(), x, yPos, { width: 72 });
+            doc.font('Helvetica').fontSize(8.5).fillColor(BLACK)
+                .text(value || '—', x + 76, yPos, { width: w - 80 });
+        };
+
+        // ═══════════════════════════════════════════════════
+        // SECTION 1: CUSTOMER DETAILS  (two-column layout)
+        // ═══════════════════════════════════════════════════
+        y = sectionHeader('CUSTOMER DETAILS', y);
+
+        const addr = [
+            sale.customer?.address?.addressLine1,
+            sale.customer?.address?.city,
+            sale.customer?.address?.state,
+            sale.customer?.address?.pincode,
+            sale.customer?.address?.country,
+        ].filter(Boolean).join(', ');
+
+        // Left column
+        kv('Name', sale.customer?.name || '', MARGIN, y, COL_W);
+        kv('Phone', formatPhone(sale.customer?.phone), MARGIN, y + 14, COL_W);
+
+        // Right column
+        kv('Address', addr, COL2_X, y, COL_W);
+
+        y += 30;
+        this._hr(doc, y, '#E0E0E0', 0.5);
+        y += 10;
+
+        // ═══════════════════════════════════════════════════
+        // SECTION 2: VEHICLE DETAILS  (per-bike card)
+        // ═══════════════════════════════════════════════════
+        y = sectionHeader('VEHICLE DETAILS', y);
+
+        const bikeItems = (sale.items || []).filter(it => it.itemType === 'BIKE');
+
+        bikeItems.forEach((item, idx) => {
+            // Vehicle card header
+            doc.rect(MARGIN, y, CONTENT_W, 14).fill('#F0F0F5');
+            doc.font('Helvetica-Bold').fontSize(8).fillColor('#1A1A2E')
+                .text(`VEHICLE #${idx + 1}  —  ${item.model?.brand || ''} ${item.model?.name || ''}  |  Color: ${item.color || 'Any'}`,
+                    MARGIN + 8, y + 3);
+            y += 20;
+
+            // Two-column grid of fields
+            const leftFields = [
+                ['Engine #', '___________________________'],
+                ['Chassis #', '___________________________'],
+                ['Key Number', '___________________________'],
+                ['Battery No.', '___________________________'],
+            ];
+            const rightFields = [
+                ['Battery Co.', '___________________________'],
+                ['Battery Make', '___________________________'],
+                ['Tyre Make', '___________________________'],
+                ['Odometer', '___________________________'],
+            ];
+
+            const rowH = 16;
+            leftFields.forEach((f, i) => {
+                // Alternate row tint
+                if (i % 2 === 0) {
+                    doc.rect(MARGIN, y, CONTENT_W, rowH).fill('#FAFAFA');
+                }
+                kv(f[0], f[1], MARGIN + 6, y + 3, COL_W - 6);
+                kv(rightFields[i][0], rightFields[i][1], COL2_X, y + 3, COL_W);
+
+                // Center divider
+                doc.moveTo(COL2_X - 6, y).lineTo(COL2_X - 6, y + rowH)
+                    .strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+
+                y += rowH;
+            });
+
+            y += 8;
+        });
+
+        this._hr(doc, y, '#E0E0E0', 0.5);
+        y += 10;
+
+        // ═══════════════════════════════════════════════════
+        // SECTION 3: PDI CHECKLIST  (two-column grid)
+        // ═══════════════════════════════════════════════════
+        y = sectionHeader('PDI CHECKLIST', y);
+
+        const checks = [
+            'Battery Voltage Checked & Charged',
+            'Engine Oil Level Checked',
+            'Tyre Pressure Checked',
+            'All Electrical Functions Checked',
+            'Lights & Horn Verified',
+            'Brakes & Clutch Adjustment Checked',
+            'Toolkit & Owners Manual Included',
+            'First Aid Kit Included',
+            'Vehicle Cleaned & Polished',
+            '5 Photos of Vehicle Taken',
+        ];
+
+        const checkRowH = 17;
+        checks.forEach((check, i) => {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const cx = col === 0 ? MARGIN + 6 : COL2_X;
+            const cy = y + row * checkRowH;
+
+            // Alternate row tint (full-width, only on left column to avoid double draw)
+            if (col === 0 && row % 2 === 0) {
+                doc.rect(MARGIN, cy, CONTENT_W, checkRowH).fill('#FAFAFA');
+            }
+
+            // Checkbox
+            doc.roundedRect(cx + 1, cy + 4, 9, 9, 1.5)
+                .strokeColor(RED).lineWidth(1).stroke();
+
+            doc.font('Helvetica').fontSize(8).fillColor(BLACK)
+                .text(check, cx + 14, cy + 5, { width: COL_W - 14 });
+        });
+
+        y += Math.ceil(checks.length / 2) * checkRowH + 12;
+
+        this._hr(doc, y, '#E0E0E0', 0.5);
+        y += 12;
+
+        // ═══════════════════════════════════════════════════
+        // SECTION 4: REMARKS  (short text box)
+        // ═══════════════════════════════════════════════════
+        y = sectionHeader('REMARKS / NOTES', y);
+
+        doc.rect(MARGIN, y, CONTENT_W, 32).strokeColor('#D0D0D0').lineWidth(0.5).stroke();
+        doc.font('Helvetica').fontSize(7.5).fillColor('#AAAAAA')
+            .text('Enter any remarks or notes here...', MARGIN + 8, y + 11);
+
+        y += 42;
+
+        // ═══════════════════════════════════════════════════
+        // SECTION 5: SIGNATURES  (three boxes)
+        // ═══════════════════════════════════════════════════
+        const sigBoxW = (CONTENT_W - 16) / 3;
+        const sigBoxH = 42;
+        const sigLabels = ['PDI Engineer', "Supervisor's Approval", "Customer's Acknowledgment"];
+
+        sigLabels.forEach((lbl, i) => {
+            const sx = MARGIN + i * (sigBoxW + 8);
+
+            // Box
+            doc.rect(sx, y, sigBoxW, sigBoxH)
+                .strokeColor('#CCCCCC').lineWidth(0.5).stroke();
+
+            // Signature line inside box
+            doc.moveTo(sx + 8, y + sigBoxH - 14)
+                .lineTo(sx + sigBoxW - 8, y + sigBoxH - 14)
+                .strokeColor('#CCCCCC').lineWidth(0.5).stroke();
+
+            // Label strip at bottom
+            doc.rect(sx, y + sigBoxH - 12, sigBoxW, 12).fill('#F5F5F5');
+            doc.font('Helvetica-Bold').fontSize(6.5).fillColor(DARK_GRAY)
+                .text(lbl.toUpperCase(), sx, y + sigBoxH - 9, { width: sigBoxW, align: 'center' });
+        });
+
+        y += sigBoxH + 10;
+
+        // ── Footer bar ────────────────────────────────────────────────────────────
+        doc.rect(MARGIN, y, CONTENT_W, 12).fill(RED);
+        doc.font('Helvetica').fontSize(6.5).fillColor('#FFFFFF')
+            .text('This PDI slip must be signed before vehicle handover.  |  Keep a copy for dealership records.',
+                MARGIN, y + 3, { width: CONTENT_W, align: 'center' });
     }
 
     generatePDISlipPDF(sale, filePath) {
