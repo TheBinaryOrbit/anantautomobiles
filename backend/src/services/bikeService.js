@@ -183,7 +183,7 @@ class BikeService {
     try {
       const bike = await prisma.bike.findUnique({
         where: { id },
-        include: { 
+        include: {
           model: true,
           sale: {
             include: {
@@ -229,12 +229,25 @@ class BikeService {
     }
   }
 
-  async getAllBikes() {
+  async getAllBikes(filters) {
+    const appliedFilters = {};
+
+    if (filters?.status === 'AVAILABLE') {
+      appliedFilters.status = {
+        in: ['AVAILABLE', 'EXCHANGED']
+      };
+    }
+
+    if (filters?.modelId) {
+      appliedFilters.modelId = filters.modelId;
+    }
     try {
       const bikes = await prisma.bike.findMany({
-        where: { isDeleted: false },
+        where: { isDeleted: false, ...appliedFilters },
         include: { model: true },
       });
+
+      console.log(bikes)
 
       return bikes;
     } catch (error) {

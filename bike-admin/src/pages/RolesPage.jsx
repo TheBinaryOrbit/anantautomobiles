@@ -104,9 +104,9 @@ export default function RolesPage() {
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
             Select permissions to assign to this role:
           </div>
-          <div style={{ maxHeight: 320, overflowY: 'auto', border: '0.5px solid var(--border-secondary)', borderRadius: 8 }}>
+          <div style={{ maxHeight: 380, overflowY: 'auto', border: '0.5px solid var(--border-secondary)', borderRadius: 8 }}>
             {permissions.map(p => (
-              <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid var(--border-secondary)' }}>
+              <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderBottom: '0.5px solid var(--border-secondary)', userSelect: 'none' }}>
                 <input
                   type="checkbox"
                   checked={selPerms.includes(p.id)}

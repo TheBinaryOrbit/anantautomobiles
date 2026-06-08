@@ -53,7 +53,7 @@ class InvoiceService {
     }
 
     _drawLogo(doc, x, y, w = 130, h = 40) {
-        
+
         const logoPath = path.join(__dirname, '../../public/Logo_header.jpeg');
         console.log('Looking for logo at:', logoPath);
         if (fs.existsSync(logoPath)) {
@@ -67,6 +67,7 @@ class InvoiceService {
 
     // ─── PAGE 1: TAX INVOICE ──────────────────────────────────────────────────
     // ─── PAGE 1: DELIVERY CHALLAN (UPPER SECTION) ────────────────────────────
+    // ─── PAGE 1: TAX INVOICE / DELIVERY CHALLAN (UPPER SECTION) ──────────────
     // ─── PAGE 1: TAX INVOICE / DELIVERY CHALLAN (UPPER SECTION) ──────────────
     _buildInvoicePage(doc, sale, startY = 30) {
         // ── Logo ──────────────────────────────────────────────────────────────────
@@ -91,8 +92,7 @@ class InvoiceService {
             .text(new Date(sale.saleDate).toLocaleString('en-IN'),
                 invValX, invInfoY + 13, { width: 130, align: 'right' });
 
-        // Fix for undefined addrTop variable from the original code
-        const addrTop = startY + 44; 
+        const addrTop = startY + 44;
         const divY = addrTop + 35;
         this._hr(doc, divY, RED, 1.5);
 
@@ -113,6 +113,7 @@ class InvoiceService {
             ['Address Address', addrStr],
             ['Finance Company', sale.financeCompany || 'N/A'],
             ['Payment Type', sale.paymentType || ''],
+            ['Overall Status', sale.status || 'PENDING']
         ];
 
         let gy = gridTop;
@@ -126,20 +127,21 @@ class InvoiceService {
 
         this._hr(doc, gy + 4, MID_GRAY);
 
-        // ── Items table header (Simplified Columns) ───────────────────────────────
+        // ── Items table header (Includes Status Column) ───────────────────────────
         const tblHdrY = gy + 10;
         doc.fillColor(LIGHT_GRAY).rect(MARGIN, tblHdrY - 2, CONTENT_W, 14).fill();
 
         doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK);
-        doc.text('S.No', MARGIN, tblHdrY, { width: 30 });
-        doc.text('Bike Description & Accessories', MARGIN + 40, tblHdrY, { width: 200 });
-        doc.text('Engine No.', MARGIN + 260, tblHdrY, { width: 110 });
-        doc.text('Chassis No.', MARGIN + 380, tblHdrY, { width: 110 });
+        doc.text('S.No', MARGIN, tblHdrY, { width: 25 });
+        doc.text('Description & Accessories', MARGIN + 30, tblHdrY, { width: 170 });
+        doc.text('Engine No.', MARGIN + 210, tblHdrY, { width: 95 });
+        doc.text('Chassis No.', MARGIN + 315, tblHdrY, { width: 95 });
+        doc.text('Status', MARGIN + 420, tblHdrY, { width: 70 });
         this._rtxt(doc, 'Qty', PAGE_W - MARGIN, tblHdrY, 25);
 
         this._hr(doc, tblHdrY + 14, MID_GRAY);
 
-        // ── Items rows (With Dynamic Heights & Alternating Colors) ────────────────
+        // ── Items rows (With Dynamic Heights & Conditional Color Tracking) ────────
         let rowY = tblHdrY + 18;
 
         sale.items.forEach((item, idx) => {
@@ -150,27 +152,35 @@ class InvoiceService {
 
             const engine = item.bike?.engineNumber || (isBike ? '— (PDI)' : '—');
             const chassis = item.bike?.chassisNumber || (isBike ? '— (PDI)' : '—');
+            const itemStatus = item.SaleItemStatus || 'SOLD';
 
-            // Calculate the height required for the item name text blocks
-            const textWidth = 200;
+            // Calculate height metrics dynamically
+            const textWidth = 170;
             doc.font('Helvetica').fontSize(8);
             const textHeight = doc.heightOfString(modelName, { width: textWidth });
-            
-            // Define minimum row height and add vertical padding
+
             const padding = 6;
             const rowHeight = Math.max(14, textHeight + padding);
 
-            // Alternating row background color strip
-            if (idx % 2 === 1) {
+            // Row background tint logic based on item status
+            if (itemStatus === 'EXCHANGED') {
+                doc.fillColor('#fef2f2').rect(MARGIN, rowY - (padding / 2), CONTENT_W, rowHeight).fill();
+            } else if (idx % 2 === 1) {
                 doc.fillColor('#f9f9f9').rect(MARGIN, rowY - (padding / 2), CONTENT_W, rowHeight).fill();
             }
 
-            // Draw content text
-            doc.fillColor(BLACK);
-            doc.text(`${idx + 1}`, MARGIN, rowY, { width: 30 });
-            doc.text(modelName, MARGIN + 40, rowY, { width: textWidth });
-            doc.text(engine, MARGIN + 260, rowY, { width: 110 });
-            doc.text(chassis, MARGIN + 380, rowY, { width: 110 });
+            // Draw data rows
+            doc.fillColor(itemStatus === 'EXCHANGED' ? '#b91c1c' : BLACK);
+            doc.text(`${idx + 1}`, MARGIN, rowY, { width: 25 });
+            doc.text(modelName, MARGIN + 30, rowY, { width: textWidth });
+            doc.text(engine, MARGIN + 210, rowY, { width: 95 });
+            doc.text(chassis, MARGIN + 315, rowY, { width: 95 });
+
+            // Render Status Text bolded
+            doc.font('Helvetica-Bold');
+            doc.text(itemStatus, MARGIN + 420, rowY, { width: 70 });
+            doc.font('Helvetica');
+
             this._rtxt(doc, String(item.quantity || 1), PAGE_W - MARGIN, rowY, 25);
 
             rowY += rowHeight;
@@ -185,42 +195,36 @@ class InvoiceService {
         const sumLblW = 120;
 
         doc.font('Helvetica').fontSize(8.5).fillColor(BLACK);
-        
-        // Grand Total Row
+
         doc.font('Helvetica-Bold').text('Grand Total:', sumLblX, rowY, { width: sumLblW });
         this._rtxt(doc, (sale.totalAmount || 0).toFixed(2), sumValX, rowY, 90);
         rowY += 13;
 
-        // Discount Row
         doc.font('Helvetica').text('Discount Allowed:', sumLblX, rowY, { width: sumLblW });
         this._rtxt(doc, `-${(sale.discountAmount || 0).toFixed(2)}`, sumValX, rowY, 90);
         rowY += 13;
 
-        // Paid Row
         doc.font('Helvetica-Bold').fillColor('#10b981').text('Amount Paid:', sumLblX, rowY, { width: sumLblW });
         this._rtxt(doc, (sale.paidAmount || 0).toFixed(2), sumValX, rowY, 90);
         rowY += 13;
 
-        // Pending Row
-        doc.font('Helvetica-Bold').fillColor('#f59e0b').text('Pending Balance:', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, (sale.pendingAmount || 0).toFixed(2), sumValX, rowY, 90);
-        rowY += 16;
+        // doc.font('Helvetica-Bold').fillColor('#f59e0b').text('Pending Balance:', sumLblX, rowY, { width: sumLblW });
+        // this._rtxt(doc, (sale.pendingAmount || 0).toFixed(2), sumValX, rowY, 90);
+        // rowY += 16;
 
         this._hr(doc, rowY, MID_GRAY, 0.5);
         rowY += 10;
 
-        // Signatures for upper part
         doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY);
         doc.text("Customer's Acknowledgement Signature", MARGIN, rowY);
         doc.text('Authorized Signatory (Anant Hero)', PAGE_W - MARGIN - 180, rowY, { width: 180, align: 'right' });
-        
-        return rowY + 25; 
+
+        return rowY + 25;
     }
 
     // ─── PAGE 1: GATE PASS (FIXED TO BOTTOM OF PAGE) ──────────────────────────
+    // ─── PAGE 1: GATE PASS (FIXED TO BOTTOM OF PAGE) ──────────────────────────
     _buildGatePassPage(doc, sale, startY) {
-        // Set fixed coordinates anchored to the bottom of A4 canvas (Height: 841.89)
-        // Adjust allocated total height for Gate Pass to prevent overflow (~200 points)
         const GATE_PASS_HEIGHT = 200;
         let y = 920 - GATE_PASS_HEIGHT - MARGIN;
 
@@ -230,32 +234,30 @@ class InvoiceService {
 
         y += 20;
 
-        // Title and minor tracking codes
-        doc.font('Helvetica-Bold').fontSize(12).fillColor(BLACK)
-            .text('GATE PASS', MARGIN, y);
-        
+        doc.font('Helvetica-Bold').fontSize(12).fillColor(BLACK).text('GATE PASS', MARGIN, y);
         doc.font('Helvetica').fontSize(8).fillColor(DARK_GRAY)
             .text(`Challan Ref: ${sale.saleNumber || sale.id || ''}  |  Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`, PAGE_W - MARGIN - 250, y, { width: 250, align: 'right' });
-        
+
         y += 16;
         this._hr(doc, y, RED, 1);
         y += 8;
 
-        // Asset items clearance mapping grid
         const gC1 = MARGIN;
-        const gC2 = MARGIN + 40;
-        const gC3 = MARGIN + 260;
-        const gC4 = MARGIN + 380;
-        const gC5 = PAGE_W - MARGIN;
+        const gC2 = MARGIN + 30;
+        const gC3 = MARGIN + 210;
+        const gC4 = MARGIN + 315;
+        const gC5 = MARGIN + 420;
+        const gC6 = PAGE_W - MARGIN;
 
         doc.fillColor(LIGHT_GRAY).rect(MARGIN, y - 2, CONTENT_W, 14).fill();
         doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK);
         doc.text('#', gC1, y, { width: 25 });
-        doc.text('Cleared Item Description', gC2, y, { width: 200 });
-        doc.text('Engine #', gC3, y, { width: 110 });
-        doc.text('Chassis #', gC4, y, { width: 110 });
-        this._rtxt(doc, 'Qty', gC5, y, 25);
-        
+        doc.text('Cleared Item Description', gC2, y, { width: 170 });
+        doc.text('Engine #', gC3, y, { width: 95 });
+        doc.text('Chassis #', gC4, y, { width: 95 });
+        doc.text('Status', gC5, y, { width: 70 });
+        this._rtxt(doc, 'Qty', gC6, y, 25);
+
         y += 16;
         this._hr(doc, y - 2, MID_GRAY);
 
@@ -268,23 +270,29 @@ class InvoiceService {
 
             const engineNo = isBike ? (item.bike?.engineNumber || '—') : '—';
             const chassisNo = isBike ? (item.bike?.chassisNumber || '—') : '—';
+            const itemStatus = item.SaleItemStatus || 'SOLD';
 
-            // Dynamic tracking for Gate pass item wrapping heights
-            const textHeight = doc.heightOfString(desc, { width: 200 });
+            const textHeight = doc.heightOfString(desc, { width: 170 });
             const padding = 4;
             const gpRowHeight = Math.max(14, textHeight + padding);
 
-            // Alternating rows inside gate pass
-            if (idx % 2 === 1) {
+            if (itemStatus === 'EXCHANGED') {
+                doc.fillColor('#fef2f2').rect(MARGIN, y - (padding / 2), CONTENT_W, gpRowHeight).fill();
+            } else if (idx % 2 === 1) {
                 doc.fillColor('#f9f9f9').rect(MARGIN, y - (padding / 2), CONTENT_W, gpRowHeight).fill();
             }
 
-            doc.fillColor(BLACK);
+            doc.fillColor(itemStatus === 'EXCHANGED' ? '#b91c1c' : BLACK);
             doc.text(`${idx + 1}`, gC1, y, { width: 25 });
-            doc.text(desc, gC2, y, { width: 200 });
-            doc.text(engineNo, gC3, y, { width: 110 });
-            doc.text(chassisNo, gC4, y, { width: 110 });
-            this._rtxt(doc, String(item.quantity || 1), gC5, y, 25);
+            doc.text(desc, gC2, y, { width: 170 });
+            doc.text(engineNo, gC3, y, { width: 95 });
+            doc.text(chassisNo, gC4, y, { width: 95 });
+
+            doc.font('Helvetica-Bold');
+            doc.text(itemStatus, gC5, y, { width: 70 });
+            doc.font('Helvetica');
+
+            this._rtxt(doc, String(item.quantity || 1), gC6, y, 25);
 
             y += gpRowHeight;
         });
@@ -292,7 +300,6 @@ class InvoiceService {
         this._hr(doc, y, MID_GRAY);
         y += 15;
 
-        // Fast clean approval stamps lines
         doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY);
         doc.text('Store In-Charge Signature: ____________________', MARGIN, y);
         doc.text('Gate Security Guard: ____________________', PAGE_W - MARGIN - 200, y, { width: 200, align: 'right' });
@@ -336,7 +343,7 @@ class InvoiceService {
 
         doc.font('Helvetica-Bold').fontSize(16).fillColor('RED')
             .text('PRE-DELIVERY INSPECTION', MARGIN, pgTop + 4, { width: CONTENT_W, align: 'center' });
-            // sale number 
+        // sale number 
         doc.font('Helvetica').fontSize(8).fillColor('rgba(255,255,255,0.85)')
             .text(`Sale Number: ${sale?.saleNumber || 'N/A'}`, MARGIN, pgTop + 26, { width: CONTENT_W, align: 'center' });
 
@@ -401,7 +408,7 @@ class InvoiceService {
         // ═══════════════════════════════════════════════════
         y = sectionHeader('VEHICLE DETAILS', y);
 
-        const bikeItems = (sale.items || []).filter(it => it.itemType === 'BIKE');
+        const bikeItems = (sale.items || []).filter(it => it.itemType === 'BIKE' && it.SaleItemStatus == 'SOLD');
 
         bikeItems.forEach((item, idx) => {
             // Vehicle card header

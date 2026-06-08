@@ -8,7 +8,7 @@ export const authApi = {
 
 /* ── Bikes ── */
 export const bikesApi = {
-  getAll:  ()          => api.get('/bikes').then(r => r.data),
+  getAll:  (filters)   => api.get(`/bikes`, { params: filters }).then(r => r.data),
   getById: (id)        => api.get(`/bikes/${id}`).then(r => r.data),
   create:  (body)      => api.post('/bikes/create', body).then(r => r.data),
   update:  (id, body)  => api.put(`/bikes/${id}`, body).then(r => r.data),
@@ -69,6 +69,8 @@ export const salesApi = {
   updateStatus:        (id, status)          => api.patch(`/sales/${id}/status`, { status }).then(r => r.data),
   updatePendingAmount: (id, pendingAmount)   => api.patch(`/sales/${id}/pending`, { pendingAmount }).then(r => r.data),
   delete:              (id)                  => api.delete(`/sales/${id}`).then(r => r.data),
+
+  exchangeItem:        (itemId, body)        => api.post(`/sales/items/${itemId}/exchange`, body).then(r => r.data),
 };
 
 /* ── Purchases ── */
@@ -135,4 +137,14 @@ export const inquiriesApi = {
   submitSales:        (body) => api.post('/inquiries/sales', body).then(r => r.data),
   getServiceInquiries: ()     => api.get('/inquiries/service').then(r => r.data),
   getSalesInquiries:   ()     => api.get('/inquiries/sales').then(r => r.data),
+  resolveServiceInquiry: (id, body) => api.patch(`/inquiries/service/${id}/resolve`, body ),
+  resolveSalesInquiry: (id, body) => api.patch(`/inquiries/sales/${id}/resolve`, body),
+};
+
+export const galleryApi = {
+  getAll: () => api.get('/gallery'),
+  create: (formData) => api.post('/gallery/create', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  remove: (id) => api.delete(`/gallery/${id}`),
 };

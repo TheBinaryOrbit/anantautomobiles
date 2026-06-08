@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Tag } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { discountsApi } from '../api/services';
+import {STATIC_BASE} from '../utils/constants';
 import {
   PageHeader,
   SearchBar,
@@ -36,6 +37,7 @@ export default function DiscountsPage() {
   const [termInput, setTermInput] = useState('');
   const [confirm, setConfirm] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -102,21 +104,28 @@ export default function DiscountsPage() {
     try {
       setLoading(true);
 
-      const payload = {
-        ...form,
-        terms: form.terms.join(','),
-        value: Number(form.value),
-        upToLimit:
-          form.type === 'PERCENTAGE' && form.upToLimit
-            ? Number(form.upToLimit)
-            : null,
-      };
+      const fd = new FormData();
+      fd.append('name', form.name);
+      fd.append('description', form.description);
+      fd.append('terms', form.terms.join(','));
+      fd.append('type', form.type);
+      fd.append('value', Number(form.value));
+      fd.append(
+        'upToLimit',
+        form.type === 'PERCENTAGE' && form.upToLimit
+          ? Number(form.upToLimit)
+          : ''
+      );
+      fd.append('isActive', form.isActive);
+      if (imageFile) {
+        fd.append('image', imageFile);
+      }
 
       if (modal?.id) {
-        await discountsApi.update(modal.id, payload);
+        await discountsApi.update(modal.id, fd);
         toast.success('Discount updated successfully');
       } else {
-        await discountsApi.create(payload);
+        await discountsApi.create(fd);
         toast.success('Discount created successfully');
       }
 
@@ -125,6 +134,7 @@ export default function DiscountsPage() {
       setModal(null);
       setForm(EMPTY);
       setTermInput('');
+      setImageFile(null);
     } catch (err) {
       toast.error(err.message || 'Something went wrong');
     } finally {
@@ -157,6 +167,7 @@ export default function DiscountsPage() {
     });
 
     setTermInput('');
+    setImageFile(null);
 
     setModal({
       id: row.id,
@@ -226,6 +237,26 @@ export default function DiscountsPage() {
           : '—',
     },
     {
+      key: 'imageUrl',
+      label: 'Image',
+      render: row =>
+        row.imageUrl ? (
+          <img
+            src={`${STATIC_BASE}${row.imageUrl}`}
+            alt={row.name}
+            style={{
+              width: 48,
+              height: 48,
+              objectFit: 'cover',
+              borderRadius: 6,
+              border: '1px solid #e5e7eb',
+            }}
+          />
+        ) : (
+          '—'
+        ),
+    },
+    {
       key: 'isActive',
       label: 'Status',
       render: row => (
@@ -251,6 +282,7 @@ export default function DiscountsPage() {
         onAdd={() => {
           setForm(EMPTY);
           setTermInput('');
+          setImageFile(null);
           setModal({
             title: 'Add Discount',
           });
@@ -302,6 +334,55 @@ export default function DiscountsPage() {
                 }
                 placeholder="20% discount on selected products"
               />
+            </Field>
+
+            <Field
+              label="Offer Image"
+              style={{ gridColumn: '1 / -1' }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={e => {
+                  const file = e.target.files[0] || null;
+                  setImageFile(file);
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px 0',
+                  fontSize: 14,
+                  color: '#374151',
+                  cursor: 'pointer',
+                }}
+              />
+              {imageFile ? (
+                <img
+                  src={URL.createObjectURL(imageFile)}
+                  alt="Preview"
+                  style={{
+                    marginTop: 10,
+                    width: 100,
+                    height: 100,
+                    objectFit: 'cover',
+                    borderRadius: 8,
+                    border: '1px solid #e5e7eb',
+                  }}
+                />
+              ) : form.imageUrl ? (
+                <img
+                  src={form.imageUrl}
+                  alt="Current"
+                  style={{
+                    marginTop: 10,
+                    width: 100,
+                    height: 100,
+                    objectFit: 'cover',
+                    borderRadius: 8,
+                    border: '1px solid #e5e7eb',
+                  }}
+                />
+              ) : null}
             </Field>
 
             <Field

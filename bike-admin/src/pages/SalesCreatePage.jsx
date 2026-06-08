@@ -22,6 +22,7 @@ const EMPTY_FORM = {
   nomineeName: '',
   nomineeAge: '',
   nomineeRelation: '',
+  disbursementAmount : 0,
   // Exchange parameters initialization
   hasExchange: false,
   exchangeDetails: {
@@ -53,7 +54,7 @@ export default function SalesCreatePage() {
   const [discounts, setDiscounts] = useState([]);
   const [prefilledBike, setPrefilledBike] = useState(null);
   const [accessories, setAccessories] = useState([]);
-  const [form, setForm] = useState({ ...EMPTY_FORM, financeCompany: '', paidAmount: 0 });
+  const [form, setForm] = useState({ ...EMPTY_FORM, financeCompany: '', paidAmount: 0, disbursementAmount: 0 });
   const [custSearch, setCustSearch] = useState('');
   const [custResults, setCustResults] = useState([]);
   const [newCust, setNewCust] = useState({});
@@ -172,16 +173,16 @@ export default function SalesCreatePage() {
 
   const total = Math.max(0, totalBeforeGlobalDiscount - globalDiscountApplied);
 
-  useEffect(() => {
-    setForm(f => {
-      const newPaid = f.paidAmount > total ? total : f.paidAmount;
-      return {
-        ...f,
-        paidAmount: newPaid,
-        pendingAmount: Math.max(0, total - newPaid)
-      };
-    });
-  }, [total]);
+  // useEffect(() => {
+  //   setForm(f => {
+  //     const newPaid = f.paidAmount > total ? total : f.paidAmount;
+  //     return {
+  //       ...f,
+  //       paidAmount: newPaid,
+  //       pendingAmount: Math.max(0, total - newPaid)
+  //     };
+  //   });
+  // }, [total]);
 
   const searchCustomers = async (q) => {
     if (!q.trim()) {
@@ -333,10 +334,12 @@ export default function SalesCreatePage() {
         financeCompany: (form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') ? form.financeCompany : null,
         financeExecutiveName: (form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') ? form.financeExecutiveName : null,
         financeExecutivePhone: (form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') ? form.financeExecutivePhone : null,
+        disbursementAmount: (form.paymentType.includes('FINANCE') || form.paymentMethod === 'FINANCE') ? parseFloat(form.disbursementAmount) || 10 : null,
         nomineeName: form.nomineeName || null,
         nomineeAge: form.nomineeAge ? parseInt(form.nomineeAge) : null,
         nomineeRelation: form.nomineeRelation || null,
         notes: form.notes || '',
+        
 
         exchangeData: form.hasExchange ? {
           oldBikeName: form.exchangeDetails.oldBikeName,
@@ -524,273 +527,286 @@ export default function SalesCreatePage() {
                       value={form.financeExecutivePhone}
                       onChange={e => setF('financeExecutivePhone', e.target.value)}
                     />
+
+                  </Field>
+
+                  <Field label="Disbursement Amount">
+                    <Input
+                      type="number"
+                      placeholder="Disbursement Amount"
+                      value={form.disbursementAmount}
+                      onChange={e => setF('disbursementAmount', parseFloat(e.target.value) || 0)}
+                    />
                   </Field>
                 </>
               )}
-              <Field label="Payment Method *">
-                <Select value={form.paymentMethod} onChange={e => setF('paymentMethod', e.target.value)}>
-                  {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                </Select>
-              </Field>
-              <Field label="Offer / Global Discount">
-                <Select value={form.discountId || ''} onChange={e => setF('discountId', e.target.value)}>
-                  <option value="">No Discount</option>
-                  {discounts.map(d => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.type === 'PERCENTAGE' ? `${d.value}%` : `Flat ${fmtINR(d.value)}`})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Paid Amount">
-                <Input
-                  type="number"
-                  value={form.paidAmount}
-                  onChange={e => {
-                    const val = parseFloat(e.target.value) || 0;
-                    setForm(f => ({ ...f, paidAmount: val, pendingAmount: Math.max(0, total - val) }));
-                  }}
-                />
-              </Field>
-              <Field label="Pending Amount">
-                <Input
-                  type="number"
-                  value={form.pendingAmount}
-                  onChange={e => {
-                    const val = parseFloat(e.target.value) || 0;
-                    setForm(f => ({ ...f, pendingAmount: val, paidAmount: Math.max(0, total - val) }));
-                  }}
-                />
-              </Field>
+            <Field label="Payment Method *">
+              <Select value={form.paymentMethod} onChange={e => setF('paymentMethod', e.target.value)}>
+                {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              </Select>
+            </Field>
+            <Field label="Offer / Global Discount">
+              <Select value={form.discountId || ''} onChange={e => setF('discountId', e.target.value)}>
+                <option value="">No Discount</option>
+                {discounts.map(d => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} ({d.type === 'PERCENTAGE' ? `${d.value}%` : `Flat ${fmtINR(d.value)}`})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Paid Amount">
+              <Input
+                type="number"
+                value={form.paidAmount}
+                onChange={e => {
+                  const val = parseFloat(e.target.value) || 0;
+                  setForm(f => ({ ...f, paidAmount: val}));
+                }}
+              />
+            </Field>
+            <Field label="Pending Amount">
+              <Input
+                type="number"
+                value={form.pendingAmount}
+                onChange={e => {
+                  const val = parseFloat(e.target.value) || 0;
+                  setForm(f => ({ ...f, pendingAmount: val}));
+                }}
+              />
+            </Field>
 
-              <div style={{ gridColumn: '1/-1', borderTop: '0.5px solid var(--border-secondary)', marginTop: 8, paddingTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Insurance / Goodlife / Nominee</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                  <Field label="Nominee Name">
-                    <Input value={form.nomineeName || ''} onChange={e => setF('nomineeName', e.target.value)} placeholder="e.g. John Doe" />
-                  </Field>
-                  <Field label="Nominee Age">
-                    <Input type="number" value={form.nomineeAge || ''} onChange={e => setF('nomineeAge', e.target.value)} placeholder="e.g. 25" />
-                  </Field>
-                  <Field label="Relation">
-                    <Input value={form.nomineeRelation || ''} onChange={e => setF('nomineeRelation', e.target.value)} placeholder="e.g. Father" />
-                  </Field>
-                </div>
+            <div style={{ gridColumn: '1/-1', borderTop: '0.5px solid var(--border-secondary)', marginTop: 8, paddingTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Insurance / Goodlife / Nominee</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                <Field label="Nominee Name">
+                  <Input value={form.nomineeName || ''} onChange={e => setF('nomineeName', e.target.value)} placeholder="e.g. John Doe" />
+                </Field>
+                <Field label="Nominee Age">
+                  <Input type="number" value={form.nomineeAge || ''} onChange={e => setF('nomineeAge', e.target.value)} placeholder="e.g. 25" />
+                </Field>
+                <Field label="Relation">
+                  <Input value={form.nomineeRelation || ''} onChange={e => setF('nomineeRelation', e.target.value)} placeholder="e.g. Father" />
+                </Field>
               </div>
+            </div>
 
-              <Field label="Notes" style={{ gridColumn: '1/-1' }}>
-                <Input value={form.notes || ''} onChange={e => setF('notes', e.target.value)} />
-              </Field>
-            </FormGrid>
+            <Field label="Notes" style={{ gridColumn: '1/-1' }}>
+              <Input value={form.notes || ''} onChange={e => setF('notes', e.target.value)} />
+            </Field>
+          </FormGrid>
+        </div>
+    </div>
+      </Card >
+
+    {/* Bike Exchange Module */ }
+    < Card style = {{ marginTop: '1rem' }
+}>
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: form.hasExchange ? 12 : 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <RefreshCw size={18} style={{ color: form.hasExchange ? 'var(--brand-dark)' : 'var(--text-tertiary)' }} />
+      <span style={{ fontSize: 14, fontWeight: 600 }}>Old Bike Exchange Module</span>
+    </div>
+    <Button
+      variant={form.hasExchange ? 'danger' : 'secondary'}
+      size="sm"
+      onClick={() => setForm(f => ({ ...f, hasExchange: !f.hasExchange }))}
+    >
+      {form.hasExchange ? 'Remove Exchange' : '+ Add Exchange Bike'}
+    </Button>
+  </div>
+
+{
+  form.hasExchange && (
+    <div style={{ borderTop: '0.5px solid var(--border-secondary)', paddingTop: 14 }}>
+      <FormGrid>
+        <Field label="Old Bike Name *">
+          <Input placeholder="e.g. Splendor Plus" value={form.exchangeDetails.oldBikeName} onChange={e => setExchangeField('oldBikeName', e.target.value)} />
+        </Field>
+        <Field label="Old Bike Brand *">
+          <Input placeholder="e.g. Hero" value={form.exchangeDetails.oldBikeBrand} onChange={e => setExchangeField('oldBikeBrand', e.target.value)} />
+        </Field>
+        <Field label="Old Bike Model *">
+          <Input placeholder="e.g. Self Start Drum Brake" value={form.exchangeDetails.oldBikeModel} onChange={e => setExchangeField('oldBikeModel', e.target.value)} />
+        </Field>
+        <Field label="Old Bike Color *">
+          <Input placeholder="e.g. Black with Silver" value={form.exchangeDetails.oldBikeColor} onChange={e => setExchangeField('oldBikeColor', e.target.value)} />
+        </Field>
+        <Field label="Old Bike Mfg Year *">
+          <Input type="number" placeholder="e.g. 2018" value={form.exchangeDetails.oldBikeYear} onChange={e => setExchangeField('oldBikeYear', e.target.value)} />
+        </Field>
+        <Field label="Exchange Evaluation Value *">
+          <Input type="number" placeholder="Value offered to customer" value={form.exchangeDetails.exchangeValue || ''} onChange={e => setExchangeField('exchangeValue', parseFloat(e.target.value) || 0)} />
+        </Field>
+        <Field label="Engine Number (Optional)">
+          <Input placeholder="Engine String" value={form.exchangeDetails.oldBikeEngineNumber} onChange={e => setExchangeField('oldBikeEngineNumber', e.target.value)} />
+        </Field>
+        <Field label="Chassis Number (Optional)">
+          <Input placeholder="Chassis String" value={form.exchangeDetails.oldBikeChassisNumber} onChange={e => setExchangeField('oldBikeChassisNumber', e.target.value)} />
+        </Field>
+        <Field label="Condition Notes" style={{ gridColumn: '1/-1' }}>
+          <Input placeholder="Scratches, overall tire life, engine noise remarks..." value={form.exchangeDetails.notes} onChange={e => setExchangeField('notes', e.target.value)} />
+        </Field>
+
+        {/* Checklist Segment */}
+        <div style={{ gridColumn: '1/-1', marginTop: 8, background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, border: '0.5px solid var(--border-secondary)' }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>Document Evaluation Checklist</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.exchangeDetails.isOldRCAvailable} onChange={e => setExchangeField('isOldRCAvailable', e.target.checked)} />
+              Original RC Book Available
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.exchangeDetails.isNocAvailable} onChange={e => setExchangeField('isNocAvailable', e.target.checked)} />
+              Bank NOC Available
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.exchangeDetails.isOwnerDocumentAvailable} onChange={e => setExchangeField('isOwnerDocumentAvailable', e.target.checked)} />
+              Owner Identity Copy Available
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.exchangeDetails.isChallanAvailable} onChange={e => setExchangeField('isChallanAvailable', e.target.checked)} />
+              Traffic Challan Cleared
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.exchangeDetails.isStatmentAvailable} onChange={e => setExchangeField('isStatmentAvailable', e.target.checked)} />
+              Bank Hypothecation Statement Clear
+            </label>
           </div>
         </div>
-      </Card>
+      </FormGrid>
+    </div>
+  )
+}
+      </Card >
 
-      {/* Bike Exchange Module */}
-      <Card style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: form.hasExchange ? 12 : 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <RefreshCw size={18} style={{ color: form.hasExchange ? 'var(--brand-dark)' : 'var(--text-tertiary)' }} />
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Old Bike Exchange Module</span>
+  <Card style={{ marginTop: '1rem' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
+      <span style={{ fontSize: 14, fontWeight: 600 }}>Items</span>
+      <Button variant="secondary" size="sm" onClick={addItem}>+ Add Item</Button>
+    </div>
+
+    {form.items.length === 0 && (
+      <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: '1rem 0' }}>No items added yet</div>
+    )}
+
+    {form.items.map((item, i) => {
+      const isPrefilledBikeItem = Boolean(prefillBikeId && item.itemType === 'BIKE' && item.bikeId === prefillBikeId);
+
+      return (
+        <div key={i} style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 14, marginBottom: 12, border: '0.5px solid var(--border-secondary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Item {i + 1}
+            </div>
+            <button
+              onClick={() => removeItem(i)}
+              style={{
+                background: 'var(--danger-bg)',
+                color: 'var(--danger-fg)',
+                border: 'none',
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Remove item"
+            >
+              <X size={14} />
+            </button>
           </div>
-          <Button
-            variant={form.hasExchange ? 'danger' : 'secondary'}
-            size="sm"
-            onClick={() => setForm(f => ({ ...f, hasExchange: !f.hasExchange }))}
-          >
-            {form.hasExchange ? 'Remove Exchange' : '+ Add Exchange Bike'}
-          </Button>
-        </div>
 
-        {form.hasExchange && (
-          <div style={{ borderTop: '0.5px solid var(--border-secondary)', paddingTop: 14 }}>
-            <FormGrid>
-              <Field label="Old Bike Name *">
-                <Input placeholder="e.g. Splendor Plus" value={form.exchangeDetails.oldBikeName} onChange={e => setExchangeField('oldBikeName', e.target.value)} />
-              </Field>
-              <Field label="Old Bike Brand *">
-                <Input placeholder="e.g. Hero" value={form.exchangeDetails.oldBikeBrand} onChange={e => setExchangeField('oldBikeBrand', e.target.value)} />
-              </Field>
-              <Field label="Old Bike Model *">
-                <Input placeholder="e.g. Self Start Drum Brake" value={form.exchangeDetails.oldBikeModel} onChange={e => setExchangeField('oldBikeModel', e.target.value)} />
-              </Field>
-              <Field label="Old Bike Color *">
-                <Input placeholder="e.g. Black with Silver" value={form.exchangeDetails.oldBikeColor} onChange={e => setExchangeField('oldBikeColor', e.target.value)} />
-              </Field>
-              <Field label="Old Bike Mfg Year *">
-                <Input type="number" placeholder="e.g. 2018" value={form.exchangeDetails.oldBikeYear} onChange={e => setExchangeField('oldBikeYear', e.target.value)} />
-              </Field>
-              <Field label="Exchange Evaluation Value *">
-                <Input type="number" placeholder="Value offered to customer" value={form.exchangeDetails.exchangeValue || ''} onChange={e => setExchangeField('exchangeValue', parseFloat(e.target.value) || 0)} />
-              </Field>
-              <Field label="Engine Number (Optional)">
-                <Input placeholder="Engine String" value={form.exchangeDetails.oldBikeEngineNumber} onChange={e => setExchangeField('oldBikeEngineNumber', e.target.value)} />
-              </Field>
-              <Field label="Chassis Number (Optional)">
-                <Input placeholder="Chassis String" value={form.exchangeDetails.oldBikeChassisNumber} onChange={e => setExchangeField('oldBikeChassisNumber', e.target.value)} />
-              </Field>
-              <Field label="Condition Notes" style={{ gridColumn: '1/-1' }}>
-                <Input placeholder="Scratches, overall tire life, engine noise remarks..." value={form.exchangeDetails.notes} onChange={e => setExchangeField('notes', e.target.value)} />
-              </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 4 }}>
+            <Field label="Type">
+              <Select value={item.itemType} onChange={e => updateItem(i, 'itemType', e.target.value)} disabled={isPrefilledBikeItem}>
+                <option value="BIKE">BIKE</option>
+                <option value="ACCESSORY">ACCESSORY</option>
+              </Select>
+            </Field>
 
-              {/* Checklist Segment */}
-              <div style={{ gridColumn: '1/-1', marginTop: 8, background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, border: '0.5px solid var(--border-secondary)' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>Document Evaluation Checklist</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={form.exchangeDetails.isOldRCAvailable} onChange={e => setExchangeField('isOldRCAvailable', e.target.checked)} />
-                    Original RC Book Available
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={form.exchangeDetails.isNocAvailable} onChange={e => setExchangeField('isNocAvailable', e.target.checked)} />
-                    RTO NOC Available
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={form.exchangeDetails.isOwnerDocumentAvailable} onChange={e => setExchangeField('isOwnerDocumentAvailable', e.target.checked)} />
-                    Owner Identity Copy Available
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={form.exchangeDetails.isChallanAvailable} onChange={e => setExchangeField('isChallanAvailable', e.target.checked)} />
-                    Traffic Challan Cleared
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={form.exchangeDetails.isStatmentAvailable} onChange={e => setExchangeField('isStatmentAvailable', e.target.checked)} />
-                    Bank Hypothecation Statement Clear
-                  </label>
-                </div>
-              </div>
-            </FormGrid>
-          </div>
-        )}
-      </Card>
-
-      <Card style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>Items</span>
-          <Button variant="secondary" size="sm" onClick={addItem}>+ Add Item</Button>
-        </div>
-
-        {form.items.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: '1rem 0' }}>No items added yet</div>
-        )}
-
-        {form.items.map((item, i) => {
-          const isPrefilledBikeItem = Boolean(prefillBikeId && item.itemType === 'BIKE' && item.bikeId === prefillBikeId);
-
-          return (
-            <div key={i} style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 14, marginBottom: 12, border: '0.5px solid var(--border-secondary)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Item {i + 1}
-                </div>
-                <button
-                  onClick={() => removeItem(i)}
-                  style={{
-                    background: 'var(--danger-bg)',
-                    color: 'var(--danger-fg)',
-                    border: 'none',
-                    width: 30,
-                    height: 30,
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  title="Remove item"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 4 }}>
-                <Field label="Type">
-                  <Select value={item.itemType} onChange={e => updateItem(i, 'itemType', e.target.value)} disabled={isPrefilledBikeItem}>
-                    <option value="BIKE">BIKE</option>
-                    <option value="ACCESSORY">ACCESSORY</option>
+            {item.itemType === 'BIKE' ? (
+              <>
+                <Field label="Model *">
+                  <Select value={item.modelId} onChange={e => updateItem(i, 'modelId', e.target.value)} disabled={isPrefilledBikeItem}>
+                    <option value="">Select model</option>
+                    {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </Select>
                 </Field>
-
-                {item.itemType === 'BIKE' ? (
-                  <>
-                    <Field label="Model *">
-                      <Select value={item.modelId} onChange={e => updateItem(i, 'modelId', e.target.value)} disabled={isPrefilledBikeItem}>
-                        <option value="">Select model</option>
-                        {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                      </Select>
-                    </Field>
-                    <Field label="Color *">
-                      <Input
-                        placeholder="e.g. Red, Black"
-                        value={item.color}
-                        onChange={e => updateItem(i, 'color', e.target.value)}
-                        disabled={isPrefilledBikeItem}
-                      />
-                    </Field>
-                    <Field label="Specific Bike (Optional)">
-                      <Select value={item.bikeId} onChange={e => updateItem(i, 'bikeId', e.target.value)} disabled={isPrefilledBikeItem}>
-                        <option value="">Reserve later (PDI)</option>
-                        {bikes
-                          .filter(b => (!item.modelId || b.modelId === item.modelId) && (!item.color || b.color?.toLowerCase().includes(item.color?.toLowerCase())))
-                          .map(b => <option key={b.id} value={b.id}>{b.chassisNumber} ({b.engineNumber})</option>)
-                        }
-                      </Select>
-                    </Field>
-                  </>
-                ) : (
-                  <Field label="Accessory *">
-                    <Select value={item.accessoryId} onChange={e => updateItem(i, 'accessoryId', e.target.value)}>
-                      <option value="">Select accessory</option>
-                      {accessories.map(a => <option key={a.id} value={a.id}>{a.name} (Stock: {a.quantityInStock})</option>)}
-                    </Select>
-                  </Field>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 12 }}>
-                <Field label="Qty"><Input type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} disabled={item.itemType === 'BIKE'} /></Field>
-                <Field label="Unit Price"><Input type="number" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', e.target.value)} /></Field>
-
-                {/* Made Read Only & Automatically linked up with the Exchange Evaluation field */}
-                <Field label="Exchange Discount">
-                  <Input type="number" value={item.discountAmount} readOnly style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }} />
+                <Field label="Color *">
+                  <Input
+                    placeholder="e.g. Red, Black"
+                    value={item.color}
+                    onChange={e => updateItem(i, 'color', e.target.value)}
+                    disabled={isPrefilledBikeItem}
+                  />
                 </Field>
+                <Field label="Specific Bike (Optional)">
+                  <Select value={item.bikeId} onChange={e => updateItem(i, 'bikeId', e.target.value)} disabled={isPrefilledBikeItem}>
+                    <option value="">Reserve later (PDI)</option>
+                    {bikes
+                      .filter(b => (!item.modelId || b.modelId === item.modelId) && (!item.color || b.color?.toLowerCase().includes(item.color?.toLowerCase())))
+                      .map(b => <option key={b.id} value={b.id}>{b.chassisNumber} ({b.engineNumber})</option>)
+                    }
+                  </Select>
+                </Field>
+              </>
+            ) : (
+              <Field label="Accessory *">
+                <Select value={item.accessoryId} onChange={e => updateItem(i, 'accessoryId', e.target.value)}>
+                  <option value="">Select accessory</option>
+                  {accessories.map(a => <option key={a.id} value={a.id}>{a.name} (Stock: {a.quantityInStock})</option>)}
+                </Select>
+              </Field>
+            )}
+          </div>
 
-                <Field label="Tax %"><Input type="number" value={item.taxRate} onChange={e => updateItem(i, 'taxRate', e.target.value)} disabled={item.itemType === 'BIKE'} /></Field>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 12 }}>
+            <Field label="Qty"><Input type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} disabled={item.itemType === 'BIKE'} /></Field>
+            <Field label="Unit Price"><Input type="number" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', e.target.value)} /></Field>
+
+            {/* Made Read Only & Automatically linked up with the Exchange Evaluation field */}
+            <Field label="Exchange Discount">
+              <Input type="number" value={item.discountAmount} readOnly style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }} />
+            </Field>
+
+            <Field label="Tax %"><Input type="number" value={item.taxRate} onChange={e => updateItem(i, 'taxRate', e.target.value)} disabled={item.itemType === 'BIKE'} /></Field>
+          </div>
+
+          {/* Breakdown Section */}
+          {(item.modelId || item.accessoryId) && (
+            <div style={{ padding: 10, background: 'var(--bg-primary)', borderRadius: 8, fontSize: 11, border: '0.5px dashed var(--border-secondary)' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase' }}>Line Item Breakdown</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 10px' }}>
+                {(() => {
+                  const price = parseFloat(item.unitPrice) || 0;
+                  const disc = parseFloat(item.discountAmount) || 0;
+                  const qty = parseInt(item.quantity) || 1;
+                  const totalInclusive = Math.max(0, (price - disc) * qty);
+
+                  return (
+                    <>
+                      <span>Standard Price (x{qty}):</span> <span>{fmtINR(price * qty)}</span>
+                      {disc > 0 && <span style={{ color: 'var(--brand-dark)' }}>Exchange Deduction Applied:</span>}
+                      {disc > 0 && <span style={{ color: 'var(--brand-dark)' }}>- {fmtINR(disc * qty)}</span>}
+                      <div style={{ gridColumn: '1/-1', borderTop: '0.5px solid var(--border-secondary)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700 }}>Line Total:</span>
+                        <span style={{ fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(totalInclusive)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
-
-              {/* Breakdown Section */}
-              {(item.modelId || item.accessoryId) && (
-                <div style={{ padding: 10, background: 'var(--bg-primary)', borderRadius: 8, fontSize: 11, border: '0.5px dashed var(--border-secondary)' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase' }}>Line Item Breakdown</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 10px' }}>
-                    {(() => {
-                      const price = parseFloat(item.unitPrice) || 0;
-                      const disc = parseFloat(item.discountAmount) || 0;
-                      const qty = parseInt(item.quantity) || 1;
-                      const totalInclusive = Math.max(0, (price - disc) * qty);
-
-                      return (
-                        <>
-                          <span>Standard Price (x{qty}):</span> <span>{fmtINR(price * qty)}</span>
-                          {disc > 0 && <span style={{ color: 'var(--brand-dark)' }}>Exchange Deduction Applied:</span>}
-                          {disc > 0 && <span style={{ color: 'var(--brand-dark)' }}>- {fmtINR(disc * qty)}</span>}
-                          <div style={{ gridColumn: '1/-1', borderTop: '0.5px solid var(--border-secondary)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontWeight: 700 }}>Line Total:</span>
-                            <span style={{ fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(totalInclusive)}</span>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
             </div>
-          );
-        })}
-      </Card>
+          )}
+        </div>
+      );
+    })}
+  </Card>
 
-      {/* Pricing Breakdown Card */}
+{/* Pricing Breakdown Card */ }
       <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '16px', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Gross Subtotal (incl. tax)</span>
@@ -823,6 +839,6 @@ export default function SalesCreatePage() {
         <Button variant="secondary" onClick={() => navigate('/sales')}>Cancel</Button>
         <Button onClick={save} disabled={saving || form.items.length === 0}>{saving ? 'Creating…' : 'Create Sale'}</Button>
       </div>
-    </div>
+    </div >
   );
 }

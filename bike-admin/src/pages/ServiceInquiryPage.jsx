@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, Plus, MapPin, Download } from 'lucide-react';
+import { Wrench, Plus, MapPin, Download, Phone, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { inquiriesApi } from '../api/services';
 import { PageHeader, Card, Button, Modal, Field, Input, Select, FormGrid } from '../components/ui';
@@ -10,6 +10,10 @@ export default function ServiceInquiryPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
+  const [resolveModal, setResolveModal] = useState({ open: false, id: null });
+  const [viewRemarkModal, setViewRemarkModal] = useState({ open: false, remark: '' });
+  const [remarks, setRemarks] = useState('');
+  const [resolving, setResolving] = useState(false);
 
   // Modal Creation Form State
   const [form, setForm] = useState({
@@ -78,6 +82,27 @@ export default function ServiceInquiryPage() {
     }
   };
 
+  const openResolveModal = (id) => {
+    setResolveModal({ open: true, id });
+    setRemarks('');
+  };
+
+  const handleResolveInquiry = async () => {
+    if (!remarks.trim()) { toast.error('Please enter a remarks before resolving'); return; }
+    setResolving(true);
+    try {
+      await inquiriesApi.resolveServiceInquiry(resolveModal.id, { remarks: remarks.trim() });
+      toast.success('Service inquiry resolved successfully!');
+      setResolveModal({ open: false, id: null });
+      setRemarks('');
+      fetchInquiries();
+    } catch (err) {
+      toast.error(err.message || 'Failed to resolve service inquiry');
+    } finally {
+      setResolving(false);
+    }
+  };
+
   // Excel Export Handler for Service Inquiries
   const exportToExcel = () => {
     if (inquiries.length === 0) {
@@ -86,6 +111,7 @@ export default function ServiceInquiryPage() {
     }
 
     const headers = [
+      'S.No',
       'Customer Name',
       'Contact Phone',
       'Allocation Service Type',
@@ -94,19 +120,20 @@ export default function ServiceInquiryPage() {
       'Latitude Coordinate',
       'Longitude Coordinate',
       'Google Maps URL Link',
-      'Logged Date'
+      'Logged Date & Time'
     ];
 
-    const rows = inquiries.map(inq => [
+    const rows = inquiries.map((inq, index) => [
+      index + 1,
       `"${inq.name.replace(/"/g, '""')}"`,
       `"${inq.phone}"`,
       `"${inq.serviceType}"`,
-      `"${inq.isPaid}"`,
+      `"${inq.isPaid === 'true' || inq.isPaid === 'paid' ? 'Paid' : 'Free'}"`,
       `"${inq.freeServiceId || '—'}"`,
       `"${inq.latitude}"`,
       `"${inq.longitude}"`,
-      `"https://www.google.com/maps/search/?api=1&query=${inq.latitude},${inq.longitude}"`,
-      `"${new Date(inq.createdAt).toLocaleDateString('en-IN')}"`
+      `"https://www.google.com/maps?q=${inq.latitude},${inq.longitude}"`,
+      `"${new Date(inq.createdAt).toLocaleDateString('en-IN')} ${new Date(inq.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}"`
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -142,9 +169,9 @@ export default function ServiceInquiryPage() {
           <Button onClick={exportToExcel} variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={16} /> Export to Excel
           </Button>
-          {/* <Button onClick={() => setModalOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Button onClick={() => setModalOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Plus size={16} /> Log Service Ticket
-          </Button> */}
+          </Button>
         </div>
       </div>
 
@@ -153,51 +180,102 @@ export default function ServiceInquiryPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 12, color: 'var(--text-secondary)', width: '60px' }}>S.No</th>
                 <th style={{ textAlign: 'left', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Customer Profile</th>
                 <th style={{ textAlign: 'left', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Allocation Type</th>
                 <th style={{ textAlign: 'center', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Billing Classification</th>
-                <th style={{ textAlign: 'left', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Coupon/Booklet Reference</th>
-                <th style={{ textAlign: 'right', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Google Maps Dispatch Navigation</th>
+                <th style={{ textAlign: 'left', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Date & Time</th>
+                <th style={{ textAlign: 'center', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Location</th>
+                <th style={{ textAlign: 'right', padding: '12px', fontSize: 12, color: 'var(--text-secondary)' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {inquiries.length > 0 ? (
-                inquiries.map((inq) => (
-                  <tr key={inq.id} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
-                    <td style={{ padding: '12px', fontSize: 13, fontWeight: 600 }}>
-                      <div>{inq.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400 }}>{inq.phone}</div>
-                    </td>
-                    <td style={{ padding: '12px', fontSize: 13 }}>{inq.serviceType}</td>
-                    <td style={{ textAlign: 'center', padding: '12px' }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12,
-                        background: inq.isPaid === 'paid' ? 'var(--success-bg)' : 'var(--brand-light)',
-                        color: inq.isPaid === 'paid' ? 'var(--success-fg)' : 'var(--brand-dark)'
-                      }}>
-                        {inq.isPaid === 'paid' ? 'Paid Billing' : 'Free Job Card'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', fontSize: 13, color: inq.freeServiceId ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                      {inq.freeServiceId || '—'}
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '12px' }}>
-                      <a 
-                        href={`https://www.google.com/maps/search/?api=1&query=${inq.latitude},${inq.longitude}`} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <Button variant="secondary" size="sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <MapPin size={13} style={{ color: 'var(--brand-dark)' }} /> Launch Route Map
-                        </Button>
-                      </a>
-                    </td>
-                  </tr>
-                ))
+                inquiries.map((inq, index) => {
+                  const isPaidBilling = inq.isPaid === 'true' || inq.isPaid === 'paid';
+                  const createdDate = new Date(inq.createdAt);
+                  const formattedDateTime = `${createdDate.toLocaleDateString('en-IN')} ${createdDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+
+                  return (
+                    <tr key={inq.id} style={{ borderBottom: '1px solid var(--border-secondary)', opacity: inq.isResolved ? 0.6 : 1 }}>
+                      {/* S.No */}
+                      <td style={{ padding: '12px', fontSize: 13, color: 'var(--text-secondary)' }}>{index + 1}</td>
+                      
+                      {/* Customer Profile (Name & Phone) */}
+                      <td style={{ padding: '12px', fontSize: 13, fontWeight: 600 }}>
+                        <div>{inq.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400 }}>{inq.phone}</div>
+                      </td>
+                      
+                      {/* Service Type */}
+                      <td style={{ padding: '12px', fontSize: 13 }}>{inq.serviceType}</td>
+                      
+                      {/* Billing Classification */}
+                      <td style={{ textAlign: 'center', padding: '12px' }}>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 12,
+                          background: isPaidBilling ? 'var(--success-bg)' : 'var(--brand-light)',
+                          color: isPaidBilling ? 'var(--success-fg)' : 'var(--brand-dark)'
+                        }}>
+                          {isPaidBilling ? 'Paid Billing' : 'Free Job Card'}
+                        </span>
+                      </td>
+
+                      {/* Date and Time */}
+                      <td style={{ padding: '12px', fontSize: 13, color: 'var(--text-primary)' }}>
+                        {formattedDateTime}
+                      </td>
+
+                      {/* Location (Visit Button) */}
+                      <td style={{ textAlign: 'center', padding: '12px' }}>
+                        <a 
+                          href={`https://www.google.com/maps?q=${inq.latitude},${inq.longitude}`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <Button variant="secondary" size="sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <MapPin size={13} style={{ color: 'var(--brand-dark)' }} /> Visit
+                          </Button>
+                        </a>
+                      </td>
+
+                      {/* Action Buttons (Call and Resolve) */}
+                      <td style={{ textAlign: 'right', padding: '12px' }}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <a href={`tel:${inq.phone}`} style={{ textDecoration: 'none' }}>
+                            <Button variant="secondary" size="sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--success-fg)' }}>
+                              <Phone size={13} /> Call
+                            </Button>
+                          </a>
+                          
+                          <Button 
+                            variant="primary" 
+                            size="sm" 
+                            disabled={inq.isResolved}
+                            onClick={() => openResolveModal(inq.id)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          >
+                            <CheckCircle size={13} /> {inq.isResolved ? 'Resolved' : 'Resolve'}
+                          </Button>
+                          {inq.isResolved && inq.remarks && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setViewRemarkModal({ open: true, remark: inq.remarks })}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            >
+                              View Remark
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                  <td colSpan="7" style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
                     No service ticket inquiries found in logs.
                   </td>
                 </tr>
@@ -222,6 +300,7 @@ export default function ServiceInquiryPage() {
                 <Select value={form.serviceType} onChange={e => setForm({ ...form, serviceType: e.target.value })}>
                   <option value="Doorstep Service">Doorstep Service Dispatch</option>
                   <option value="Workshop Pickup">Workshop Desk Pickup</option>
+                  <option value="Accidental Repair">Accidental Repair</option>
                 </Select>
               </Field>
               <Field label="Payment Classification *">
@@ -254,6 +333,57 @@ export default function ServiceInquiryPage() {
               <Button type="submit" disabled={submitting}>{submitting ? 'Saving...' : 'Register Ticket'}</Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Resolve Remark Modal */}
+      {resolveModal.open && (
+        <Modal title="Resolve Service Inquiry" onClose={() => setResolveModal({ open: false, id: null })}>
+          <div style={{ paddingTop: 8 }}>
+            <Field label="Resolution Remark *">
+              <textarea
+                value={remarks}
+                onChange={e => setRemarks(e.target.value)}
+                placeholder="e.g. Technician completed doorstep service, issue resolved"
+                rows={4}
+                style={{
+                  width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6,
+                  border: '1px solid var(--border-secondary)', background: 'var(--bg-primary)',
+                  color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit',
+                  outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </Field>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20, borderTop: '1px solid var(--border-secondary)', paddingTop: 14 }}>
+              <Button type="button" variant="secondary" onClick={() => setResolveModal({ open: false, id: null })}>Cancel</Button>
+              <Button type="button" onClick={handleResolveInquiry} disabled={resolving}>
+                <CheckCircle size={13} style={{ marginRight: 4 }} />{resolving ? 'Resolving...' : 'Confirm Resolve'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {/* View Remark Modal */}
+      {viewRemarkModal.open && (
+        <Modal title="Resolution Remark" onClose={() => setViewRemarkModal({ open: false, remark: '' })}>
+          <div style={{ paddingTop: 8 }}>
+            <Field label="Remark">
+              <textarea
+                readOnly
+                value={viewRemarkModal.remark}
+                rows={4}
+                style={{
+                  width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6,
+                  border: '1px solid var(--border-secondary)', background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)', resize: 'none', fontFamily: 'inherit',
+                  outline: 'none', boxSizing: 'border-box', cursor: 'default'
+                }}
+              />
+            </Field>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20, borderTop: '1px solid var(--border-secondary)', paddingTop: 14 }}>
+              <Button type="button" variant="secondary" onClick={() => setViewRemarkModal({ open: false, remark: '' })}>Close</Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

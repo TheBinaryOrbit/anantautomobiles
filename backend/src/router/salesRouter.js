@@ -16,4 +16,6 @@ router.patch('/:id/status', authMiddleware, checkPermission('sales_updateStatus'
 router.patch('/:id/pending', authMiddleware, checkPermission('sales_edit'), (req, res, next) => salesController.updatePendingAmount(req, res, next));
 router.delete('/:id', authMiddleware, checkPermission('sales_delete'), (req, res, next) => salesController.deleteSale(req, res, next));
 
+router.post('/items/:id/exchange', authMiddleware, checkPermission('sales_edit'), (req, res, next) => salesController.exchangeItem(req, res, next));
+
 module.exports = router;

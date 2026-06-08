@@ -15,10 +15,12 @@ export const MASTER_NAV_ITEMS = [
   { path: '/sales',          label: 'Sales',          iconName: 'ShoppingCart',    module: 'sales',     action: 'view' },
   { path: '/discounts',      label: 'Discounts',      iconName: 'Tag',             module: 'discounts', action: 'view' },
   { path: '/exchange-bikes', label: 'Exchange Bikes', iconName: 'RefreshCw',       module: 'exchange',  action: 'view' },
+  { path: '/gallery',        label: 'Gallery',        iconName: 'Image',           module: 'gallery',   action: 'view' },
   { path: '/inquire-service',label: 'Service Inquiry', iconName: 'MessageCircle',   module: 'serviceInquiry', action: 'view' },
   { path: '/inquire-sales',  label: 'Sales Inquiry',   iconName: 'ShoppingBag',     module: 'salesInquiry', action: 'view' },
   { path: '/users',          label: 'Users',          iconName: 'User',            module: 'users',     action: 'view' },
   { path: '/roles',          label: 'Roles',          iconName: 'KeyRound',        module: 'role',      action: 'manage' },
+  
 ];
 
 export function NavigationProvider({ children }) {

@@ -299,7 +299,7 @@ class SalesService {
 
       const totalAmount = (subtotal - totalDiscountAmount) + totalRtoOverall + totalInsuranceOverall + totalOtherOverall;
       const pendingAmount = parseFloat(saleData.pendingAmount) || 0;
-      const paidAmount = totalAmount - pendingAmount;
+      const paidAmount = saleData.paidAmount;
       const isPaid = pendingAmount === 0;
 
       const isPDI = saleItemsData.some(it => it.itemType === 'BIKE' && !it.bikeId);
@@ -483,7 +483,7 @@ async getSale(id) {
     }
   }
   async updateSaleStatus(id, status) {
-    const validStatuses = ['PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELLED', 'REFUNDED'];
+    const validStatuses = ['PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELLED', 'REFUNDED' ,'EXCHANGED'];
 
     if (!validStatuses.includes(status)) {
       throw {
@@ -644,7 +644,9 @@ async getSale(id) {
         where: { id: bikeId }
       });
 
-      if (!bike || bike.status !== 'AVAILABLE') {
+      console.log(bike.status)
+
+      if (!bike || (bike.status !== 'AVAILABLE' && bike.status !== 'EXCHANGED')) {
         throw { statusCode: 400, message: 'Bike is not available or already assigned' };
       }
 
@@ -745,6 +747,249 @@ async getSale(id) {
     const pdiInfo = await invoiceService.savePDISlip(sale);
     return pdiInfo;
   }
+
+
+  async updateSaleItem(id, updateData) {
+    try {
+      const saleItem = await prisma.saleItem.findUnique({
+        where: { id },
+        include: { sale: true }
+      });
+
+      if (!saleItem) {
+        throw { message: 'Sale item not found', statusCode: 404 };
+      }
+
+      const updatedSaleItem = await prisma.saleItem.update({
+        where: { id },
+        data: updateData
+      });
+
+      return updatedSaleItem;
+    } catch (error) {
+      if (error.statusCode === 404) {
+        throw error;
+      }
+      throw new Error(`Failed to update sale item: ${error.message}`);
+    }
+  }
+
+
+  async exchangeSaleItem(saleItemId, reqBody) {
+    const { newItemType, newItemId, newColor, newUnitPrice, newDiscountAmount, newNotes } = reqBody;
+
+    if (!saleItemId) {
+      throw { statusCode: 400, message: 'Sale Item ID is required' };
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // 1. Fetch current sale item and its parent sale structure
+      const oldSaleItem = await tx.saleItem.findUnique({
+        where: { id: saleItemId },
+        include: { sale: true }
+      });
+
+      if (!oldSaleItem) {
+        throw { statusCode: 44, message: 'Original Sale Item not found' };
+      }
+      if (oldSaleItem.SaleItemStatus === 'EXCHANGED') {
+        throw { statusCode: 400, message: 'This item has already been exchanged' };
+      }
+
+      const saleId = oldSaleItem.saleId;
+
+      // 2. Rollback/Update Old Item Statuses
+      if (oldSaleItem.itemType === 'BIKE') {
+        if (oldSaleItem.bikeId) {
+          // Change specific old bike status back to EXCHANGED (re-entering pool or marked away)
+          await tx.bike.update({
+            where: { id: oldSaleItem.bikeId },
+            data: { status: 'EXCHANGED', saleId: null }
+          });
+        }
+      } else if (oldSaleItem.itemType === 'ACCESSORY') {
+        // Restock old accessory quantities
+        await tx.accessories.update({
+          where: { id: oldSaleItem.accessoryId },
+          data: { quantityInStock: { increment: oldSaleItem.quantity } }
+        });
+      }
+
+      // Mark the old sale item structure as EXCHANGED
+      await tx.saleItem.update({
+        where: { id: saleItemId },
+        data: { SaleItemStatus: 'EXCHANGED' }
+      });
+
+      // 3. Initialize & Validate New Item Data
+      let unitPrice = parseFloat(newUnitPrice) || 0;
+      let cgstRate = 0, sgstRate = 0, igstRate = 0, cessRate = 0;
+      let bikeId = null;
+      let modelId = null;
+      let accessoryId = null;
+      let quantity = newItemType === 'BIKE' ? 1 : (parseInt(reqBody.quantity) || 1);
+
+      if (newItemType === 'BIKE') {
+        // Assume newItemId passed could be a specific Bike ID or BikeModel ID depending on PDI stage
+        // Let's check if it's a concrete specific bike unit first
+        const bikeUnit = await tx.bike.findUnique({
+          where: { id: newItemId },
+          include: { model: true }
+        });
+
+        if (bikeUnit) {
+          if (bikeUnit.status !== 'AVAILABLE') {
+            throw { statusCode: 400, message: 'The requested new bike unit is not AVAILABLE' };
+          }
+          bikeId = bikeUnit.id;
+          modelId = bikeUnit.modelId;
+          unitPrice = newUnitPrice || bikeUnit.model.exShowroomPrice || 0;
+          cgstRate = bikeUnit.model.cgstRate || 0;
+          sgstRate = bikeUnit.model.sgstRate || 0;
+          igstRate = bikeUnit.model.igstRate || 0;
+          cessRate = bikeUnit.model.cessRate || 0;
+
+          // Update new bike to SOLD linked directly to this sale
+          await tx.bike.update({
+            where: { id: bikeId },
+            data: { status: 'SOLD', saleId }
+          });
+        } else {
+          // Treat as Model ID allocation during initial phase
+          const bikeModel = await tx.bikeModel.findUnique({ where: { id: newItemId } });
+          if (!bikeModel || bikeModel.isDeleted) {
+            throw { statusCode: 404, message: 'New Bike Model choice not found' };
+          }
+          modelId = bikeModel.id;
+          unitPrice = newUnitPrice || bikeModel.exShowroomPrice || 0;
+          cgstRate = bikeModel.cgstRate || 0;
+          sgstRate = bikeModel.sgstRate || 0;
+          igstRate = bikeModel.igstRate || 0;
+          cessRate = bikeModel.cessRate || 0;
+        }
+      } else if (newItemType === 'ACCESSORY') {
+        const accessory = await tx.accessories.findUnique({ where: { id: newItemId } });
+        if (!accessory || accessory.isDeleted) {
+          throw { statusCode: 404, message: 'New Accessory variant not found' };
+        }
+        if (accessory.quantityInStock < quantity) {
+          throw { statusCode: 400, message: `Insufficient accessory inventory. Available: ${accessory.quantityInStock}` };
+        }
+        accessoryId = accessory.id;
+        unitPrice = newUnitPrice || accessory.price || 0;
+
+        // Decrement physical stock allocations
+        await tx.accessories.update({
+          where: { id: accessoryId },
+          data: { quantityInStock: { decrement: quantity } }
+        });
+      }
+
+      // Calculate taxes & totals for the new line item
+      const discountAmount = parseFloat(newDiscountAmount) || 0;
+      const totalTaxRate = (cgstRate + sgstRate + igstRate + cessRate) / 100;
+      const itemSubtotal = unitPrice * quantity;
+      const itemDiscountTotal = discountAmount * quantity;
+      const inclusivePrice = unitPrice - discountAmount;
+      const basePrice = inclusivePrice / (1 + totalTaxRate);
+      const itemTaxAmount = (inclusivePrice - basePrice) * quantity;
+      const lineTotal = (inclusivePrice * quantity); // Assuming rto/insurance defaults to 0 for additions unless added.
+
+      // 4. Create the New Sale Item row mapping
+      await tx.saleItem.create({
+        data: {
+          saleId,
+          itemType: newItemType,
+          bikeId,
+          modelId,
+          color: newItemType === 'BIKE' ? (newColor || 'Any') : null,
+          accessoryId,
+          quantity,
+          unitPrice,
+          discountAmount,
+          cgstRate,
+          sgstRate,
+          igstRate,
+          cessRate,
+          taxRate: (cgstRate + sgstRate + igstRate + cessRate),
+          lineTotal,
+          SaleItemStatus: 'SOLD',
+          notes: newNotes || `Exchanged with item ID: ${saleItemId}`
+        }
+      });
+
+      // 5. Recalculate Entire Sale Financial Snapshot
+      const allUpdatedItems = await tx.saleItem.findMany({ where: { saleId } });
+      
+      let newSubtotal = 0;
+      let newDiscountAmountTotal = 0;
+      let newTaxAmountTotal = 0;
+      let newTotalAmount = 0;
+
+      // Filter active items for financial footprinting vs old items marked EXCHANGED
+      allUpdatedItems.forEach((it) => {
+        if (it.SaleItemStatus !== 'EXCHANGED') {
+          const qty = it.quantity;
+          const taxRatePercent = it.taxRate / 100;
+          newSubtotal += it.unitPrice * qty;
+          newDiscountAmountTotal += it.discountAmount * qty;
+          
+          const incPrice = it.unitPrice - it.discountAmount;
+          const bPrice = incPrice / (1 + taxRatePercent);
+          newTaxAmountTotal += (incPrice - bPrice) * qty;
+          newTotalAmount += it.lineTotal;
+        }
+      });
+
+      // Recalculate pending vs paid values based on existing parameters adjustments
+      const currentPending = oldSaleItem.sale.pendingAmount;
+      const runningPaidAmount = oldSaleItem.sale.paidAmount;
+      const updatedPendingAmount = Math.max(0, newTotalAmount - runningPaidAmount);
+      // const updatedPaidAmount = newTotalAmount - updatedPendingAmount;
+
+      // 6. Push global transformations updates directly onto target Sale record
+      const updatedSale = await tx.sale.update({
+        where: { id: saleId },
+        data: {
+          subtotal: newSubtotal,
+          discountAmount: newDiscountAmountTotal,
+          taxAmount: newTaxAmountTotal,
+          totalAmount: newTotalAmount,
+          pendingAmount: updatedPendingAmount,
+          status: 'EXCHANGED' // Enforce parent status update mutation step
+        },
+        include: {
+          customer: { include: { address: true } },
+          items: {
+            include: {
+              bike: { include: { model: true } },
+              model: true,
+              accessory: true,
+            },
+          },
+        },
+      });
+
+      // 7. Re-trigger generation pipeline for clean, unified invoices 
+      const invoiceInfo = await invoiceService.saveInvoice(updatedSale);
+      
+      return await tx.sale.update({
+        where: { id: saleId },
+        data: { invoiceUrl: invoiceInfo.url },
+        include: {
+          customer: { include: { address: true } },
+          items: {
+            include: {
+              bike: { include: { model: true } },
+              model: true,
+              accessory: true,
+            },
+          },
+        },
+      });
+    });
+  }
+
 }
 
 module.exports = new SalesService();

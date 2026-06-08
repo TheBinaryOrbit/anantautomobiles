@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Download, ArrowLeft, Edit2, Save, X, Eye, RefreshCw, FileText, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { salesApi, bikesApi } from '../api/services';
+import { salesApi, bikesApi, bikeModelsApi, accessoriesApi } from '../api/services';
 import { fmtINR, STATIC_BASE } from '../utils/constants';
-import { Button, Modal, Select, Field } from '../components/ui';
+import { Button, Modal, Field } from '../components/ui';
 
 export default function SalesDetailPage() {
   const { id } = useParams();
@@ -22,6 +22,18 @@ export default function SalesDetailPage() {
   const [selectedBikeId, setSelectedBikeId] = useState('');
   const [bikeSearch, setBikeSearch] = useState('');
 
+  // ── NEW SYSTEM STATES FOR EXCHANGE DIALOGUE ──
+  const [exchangingItem, setExchangingItem] = useState(null); // SaleItem instance data object
+  const [exchangeType, setExchangeType] = useState('BIKE');
+  const [catalogList, setCatalogList] = useState([]); // Models or Accessories variants pool
+  const [selectedTargetId, setSelectedTargetId] = useState('');
+  const [exchQty, setExchQty] = useState(1);
+  const [exchColor, setExchColor] = useState('');
+  const [exchUnitPrice, setExchUnitPrice] = useState('');
+  const [exchDiscount, setExchDiscount] = useState(0);
+  const [exchNotes, setExchNotes] = useState('');
+  const [processingExchange, setProcessingExchange] = useState(false);
+
   useEffect(() => {
     fetchSaleDetails();
   }, [id]);
@@ -31,6 +43,13 @@ export default function SalesDetailPage() {
       fetchAvailableBikes(assigningBike.modelId, assigningBike.color);
     }
   }, [assigningBike]);
+
+  // Load selection pool items when switching product types in the exchange modal
+  useEffect(() => {
+    if (exchangingItem) {
+      loadCatalogPool(exchangeType);
+    }
+  }, [exchangeType, exchangingItem]);
 
   const fetchSaleDetails = async () => {
     try {
@@ -50,16 +69,69 @@ export default function SalesDetailPage() {
 
   const fetchAvailableBikes = async (modelId, color) => {
     try {
-      const resp = await bikesApi.getAll();
+      const resp = await bikesApi.getAll({ status: 'AVAILABLE', modelId });
       const all = resp.data || resp;
-      setAvailableBikes(all.filter(b => b.status === 'AVAILABLE' && b.modelId === modelId ));
+      setAvailableBikes(all.filter(b => (b.status === 'AVAILABLE' || b.status === 'EXCHANGED') && b.modelId === modelId));
     } catch (err) {
       toast.error('Failed to fetch available bikes');
     }
   };
 
-  const filteredBikes = availableBikes.filter(b => 
-    b.chassisNumber.toLowerCase().includes(bikeSearch.toLowerCase()) || 
+  const loadCatalogPool = async (type) => {
+    try {
+      setSelectedTargetId('');
+      if (type === 'BIKE') {
+        const resp = await bikeModelsApi.getAll();
+        setCatalogList(resp.data || resp);
+      } else {
+        const resp = await accessoriesApi.getAll();
+        setCatalogList(resp.data || resp);
+      }
+    } catch (err) {
+      toast.error('Failed to populate stock catalog pool selection data framework');
+    }
+  };
+
+  const handleProcessExchange = async () => {
+    if (!selectedTargetId) {
+      toast.error('Please choose a valid replacement item from catalog.');
+      return;
+    }
+    try {
+      setProcessingExchange(true);
+      const payload = {
+        newItemType: exchangeType,
+        newItemId: selectedTargetId,
+        quantity: exchangeType === 'BIKE' ? 1 : Number(exchQty),
+        newColor: exchangeType === 'BIKE' ? exchColor : undefined,
+        newUnitPrice: exchUnitPrice ? Number(exchUnitPrice) : undefined,
+        newDiscountAmount: Number(exchDiscount),
+        newNotes: exchNotes
+      };
+
+      const resp = await salesApi.exchangeItem(exchangingItem.id, payload);
+      toast.success('Item replacement processed successfully! Ledger invoice updated.');
+      
+      // Clear modal variables out smoothly
+      setExchangingItem(null);
+      setExchColor('');
+      setExchUnitPrice('');
+      setExchDiscount(0);
+      setExchNotes('');
+      
+      // Update local state structure safely with refreshed payload details
+      const freshSale = resp.data || resp;
+      setSale(freshSale);
+      setPendingAmount(freshSale?.pendingAmount || 0);
+    } catch (err) {
+      toast.error(err.message || 'Failed to finish exchange pipeline routine loop parameters.');
+    } finally {
+      setProcessingExchange(false);
+    }
+  };
+
+  const filteredBikes = availableBikes.filter(b =>
+    b.chassisNumber.toLowerCase().includes(bikeSearch.toLowerCase()) ||
     b.engineNumber.toLowerCase().includes(bikeSearch.toLowerCase())
   );
 
@@ -81,12 +153,10 @@ export default function SalesDetailPage() {
       toast.error('Pending amount cannot be negative');
       return;
     }
-
     if (pendingAmount > (sale?.totalAmount || 0)) {
       toast.error('Pending amount cannot exceed total amount');
       return;
     }
-
     try {
       await salesApi.updatePendingAmount(id, pendingAmount);
       setSale({
@@ -108,7 +178,6 @@ export default function SalesDetailPage() {
       toast.error('Invoice is not available');
       return;
     }
-
     try {
       setGenerating(true);
       const response = await fetch(`${STATIC_BASE}/${sale.invoiceUrl}`);
@@ -166,6 +235,7 @@ export default function SalesDetailPage() {
     PAID: 'var(--success-bg)',
     CONFIRMED: 'var(--success-bg)',
     CANCELLED: 'var(--danger-bg)',
+    EXCHANGED: '#fef2f2', // Expanded theme color background
   };
 
   const statusTextColor = {
@@ -174,11 +244,12 @@ export default function SalesDetailPage() {
     PAID: 'var(--success-fg)',
     CONFIRMED: 'var(--success-fg)',
     CANCELLED: 'var(--danger-fg)',
+    EXCHANGED: '#b91c1c', // Expanded theme color tracking text font
   };
 
   return (
     <div style={{ padding: '24px' }}>
-      {/* Header */}
+      {/* Header Controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <button
           onClick={() => navigate('/sales')}
@@ -198,7 +269,7 @@ export default function SalesDetailPage() {
           Back to Sales
         </button>
         <div style={{ display: 'flex', gap: '10px' }}>
-          {sale.status === 'PDI' && (
+          
             <button
               onClick={handleGeneratePDISlip}
               disabled={generating}
@@ -221,7 +292,7 @@ export default function SalesDetailPage() {
               <Download size={16} />
               {generating ? 'Generating...' : 'PDI Slip'}
             </button>
-          )}
+          
           {sale.invoiceUrl && (
             <button
               onClick={() => setInvoiceModal(true)}
@@ -270,7 +341,7 @@ export default function SalesDetailPage() {
         </div>
       </div>
 
-      {/* Sale Info Cards */}
+      {/* Sale Informative Widgets layout cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 12, marginBottom: 24 }}>
         <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 16, border: '0.5px solid var(--border-secondary)' }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sale No.</p>
@@ -292,7 +363,7 @@ export default function SalesDetailPage() {
         </div>
       </div>
 
-      {/* Customer Information */}
+      {/* Customer profiles details rendering rows */}
       {sale.customer && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
           <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24 }}>
@@ -343,7 +414,7 @@ export default function SalesDetailPage() {
                 </div>
               </div>
             </div>
-            
+
             <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase' }}>Finance Executive</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -361,133 +432,99 @@ export default function SalesDetailPage() {
         </div>
       )}
 
-      {/* Conditional Vehicle Exchange Module Data Card */}
-      {sale.exchange && (
-        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24, marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border-secondary)', paddingBottom: 10 }}>
-            <RefreshCw size={18} style={{ color: 'var(--brand-dark)' }} />
-            <h2 style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', margin: 0 }}>
-              Linked Vehicle Exchange Information
-            </h2>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 20 }}>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Vehicle Identity</p>
-              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                {sale.exchange.oldBikeBrand} {sale.exchange.oldBikeName}
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Model Variant: {sale.exchange.oldBikeModel}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Mfg Year & Color</p>
-              <p style={{ fontSize: 13, fontWeight: 500 }}>Year: {sale.exchange.oldBikeYear}</p>
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Color: {sale.exchange.oldBikeColor}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Engine / Chassis Numbers</p>
-              <p style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-primary)' }}>Eng: {sale.exchange.oldBikeEngineNumber || '—'}</p>
-              <p style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-primary)' }}>Chas: {sale.exchange.oldBikeChassisNumber || '—'}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Valuation Credit</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(sale.exchange.exchangeValue || 0)}</p>
-            </div>
-          </div>
-
-          {sale.exchange.notes && (
-            <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 6, fontSize: 12, marginBottom: 20, border: '0.5px solid var(--border-secondary)' }}>
-              <strong>Evaluation Team Remarks:</strong> {sale.exchange.notes}
-            </div>
-          )}
-
-          {/* Verification Status List mapping */}
-          <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 14, border: '0.5px solid var(--border-secondary)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <FileText size={12} /> Legal Document Verification Checklist
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isOldRCAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
-                <CheckCircle size={14} fill={sale.exchange.isOldRCAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isOldRCAvailable ? '#fff' : 'currentColor'} />
-                Original RC Book Verified
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isNocAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
-                <CheckCircle size={14} fill={sale.exchange.isNocAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isNocAvailable ? '#fff' : 'currentColor'} />
-                RTO NOC Verified
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isOwnerDocumentAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
-                <CheckCircle size={14} fill={sale.exchange.isOwnerDocumentAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isOwnerDocumentAvailable ? '#fff' : 'currentColor'} />
-                Owner Identity Docs Copy
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isChallanAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
-                <CheckCircle size={14} fill={sale.exchange.isChallanAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isChallanAvailable ? '#fff' : 'currentColor'} />
-                Traffic Challan Clear Status
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: sale.exchange.isStatmentAvailable ? 'var(--success-fg)' : 'var(--text-tertiary)' }}>
-                <CheckCircle size={14} fill={sale.exchange.isStatmentAvailable ? '#10b981' : 'none'} stroke={sale.exchange.isStatmentAvailable ? '#fff' : 'currentColor'} />
-                Hypothecation NOC Statement
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sale Items */}
+      {/* Sale Ledger Items Data Grid Table Mapping */}
       {sale?.items && sale.items.length > 0 && (
         <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24, marginBottom: 24 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Sale Items</h2>
+          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Sale Items Matrix</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Item</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Item Definition</th>
+                  <th style={{ textAlign: 'center', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Item Status</th>
                   <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Qty</th>
                   <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Ex-Price</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Exchange Deduction Credit</th>
-                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>GST</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Tax Rate</th>
                   <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Net Total</th>
+                  <th style={{ textAlign: 'center', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Exchange Action</th>
                 </tr>
               </thead>
               <tbody>
                 {sale.items.map((item, index) => {
-                  const modelName = item.model?.name || item.bike?.model?.name || 'Unknown Model';
+                  const modelName = item.model?.name || item.bike?.model?.name || 'Unknown Item';
                   const color = item.color || item.bike?.color || '—';
                   const isBike = item.itemType === 'BIKE';
                   const needsBike = isBike && !item.bikeId;
+                  const itemStatus = item.SaleItemStatus || 'SOLD';
 
                   return (
-                    <tr key={index} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                    <tr 
+                      key={index} 
+                      style={{ 
+                        borderBottom: '1px solid var(--border-secondary)',
+                        backgroundColor: itemStatus === 'EXCHANGED' ? 'rgba(239, 68, 68, 0.05)' : 'transparent' 
+                      }}
+                    >
                       <td style={{ padding: '12px', fontSize: 13 }}>
-                        <div style={{ fontWeight: 600 }}>{item.itemType === 'BIKE' ? modelName : item.accessory?.name}</div>
+                        <div style={{ fontWeight: 600, color: itemStatus === 'EXCHANGED' ? '#b91c1c' : 'inherit' }}>
+                          {item.itemType === 'BIKE' ? modelName : item.accessory?.name}
+                        </div>
                         {isBike && (
                           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                             Color: {color} {item.bikeId ? `| Chassis: ${item.bike.chassisNumber} | Engine: ${item.bike.engineNumber}` : '(Not yet assigned)'}
                           </div>
                         )}
-                        {needsBike && (
-                          <button 
+                        {needsBike && itemStatus !== 'EXCHANGED' && (
+                          <button
                             onClick={() => setAssigningBike({ itemId: item.id, modelId: item.modelId, color: item.color })}
-                            style={{ 
-                              marginTop: 8, padding: '4px 8px', borderRadius: 4, background: 'var(--brand-dark)', 
-                              color: 'white', border: 'none', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 
+                            style={{
+                              marginTop: 8, padding: '4px 8px', borderRadius: 4, background: 'var(--brand-dark)',
+                              color: 'white', border: 'none', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
                             }}
                           >
                             <Edit2 size={10} /> Finalize Challan (Select Bike)
                           </button>
                         )}
                       </td>
+                      <td style={{ textAlign: 'center', padding: '12px', fontSize: 12 }}>
+                        <span style={{
+                          padding: '3px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                          backgroundColor: itemStatus === 'EXCHANGED' ? '#fef2f2' : '#e6f4ea',
+                          color: itemStatus === 'EXCHANGED' ? '#b91c1c' : '#137333'
+                        }}>
+                          {itemStatus}
+                        </span>
+                      </td>
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{item.quantity}</td>
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>{fmtINR(item.unitPrice || 0)}</td>
-                      
-                      {/* Interactive breakdown display of trade-in deduction values per ledger row */}
-                      <td style={{ textAlign: 'right', padding: '12px', fontSize: 13, color: item.discountAmount > 0 ? 'var(--brand-dark)' : 'var(--text-tertiary)' }}>
-                        {item.discountAmount > 0 ? `- ${fmtINR(item.discountAmount)}` : '—'}
-                      </td>
-                      
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13 }}>
                         {item.cgstRate + item.sgstRate + item.igstRate + item.cessRate}%
                       </td>
                       <td style={{ textAlign: 'right', padding: '12px', fontSize: 13, fontWeight: 600 }}>{fmtINR(item.lineTotal || 0)}</td>
+                      
+                      {/* Action Cell Trigger */}
+                      <td style={{ textAlign: 'center', padding: '12px' }}>
+                        {itemStatus !== 'EXCHANGED' ? (
+                          <button
+                            onClick={() => {
+                              setExchangingItem(item);
+                              setExchangeType(item.itemType);
+                            }}
+                            style={{
+                              padding: '6px 12px', borderRadius: 6, border: '1px solid #d1d5db',
+                              backgroundColor: '#fff', color: '#374151', fontSize: 12, fontWeight: 500,
+                              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--brand-dark)'}
+                            onMouseOut={(e) => e.currentTarget.style.borderColor = '#d1d5db'}
+                          >
+                            <RefreshCw size={12} /> Exchange
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Replaced</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -497,17 +534,15 @@ export default function SalesDetailPage() {
         </div>
       )}
 
-      {/* Payment Summary */}
+      {/* Payment Summary Component view block */}
       <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 24 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Payment Summary</h2>
-
-        {/* Amount Breakdown Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>Payment Ledger Breakdown</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-secondary)' }}>
           <div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Grand Total (After Trade-In Deductions)</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Grand Total (Active Items Ledger)</p>
             <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(sale?.totalAmount || 0)}</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
               <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase' }}>Amount Paid</p>
               <p style={{ fontSize: 16, fontWeight: 600, color: '#10b981' }}>{fmtINR(sale?.paidAmount || 0)}</p>
@@ -516,43 +551,47 @@ export default function SalesDetailPage() {
               <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase' }}>Balance Due</p>
               <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--warning-fg)' }}>{fmtINR(sale?.pendingAmount || 0)}</p>
             </div>
+            <div>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase' }}>Disbursement</p>
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--brand-dark)' }}>{fmtINR(sale.disbursementAmount || 0)}</p>
+            </div>
           </div>
         </div>
 
-        {/* Pending Amount Section */}
+        {/* Edit Pending layout display code */}
         <div style={{ background: 'var(--brand-light)', padding: 16, borderRadius: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pending Amount</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pending Amount Adjustment</p>
               {editingPending ? (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
                     type="number"
                     value={pendingAmount}
                     onChange={(e) => setPendingAmount(parseFloat(e.target.value) || 0)}
-                    style={{ width: 120, padding: '8px 10px', border: '1px solid var(--border-secondary)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--font-sans)' }}
+                    style={{ width: 120, padding: '8px 10px', border: '1px solid var(--border-secondary)', borderRadius: 6, fontSize: 13 }}
                     min="0"
                     step="0.01"
                   />
                   <button
                     onClick={handleUpdatePendingAmount}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--success-bg)', color: 'var(--success-fg)', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-sans)' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--success-bg)', color: 'var(--success-fg)', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
                   >
                     <Save size={14} /> Save
                   </button>
                   <button
                     onClick={() => { setEditingPending(false); setPendingAmount(sale?.pendingAmount || 0); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--text-tertiary)', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-sans)' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--text-tertiary)', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
                   >
                     <X size={14} /> Cancel
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '40px' }}>
                   <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand-dark)' }}>{fmtINR(sale?.pendingAmount || 0)}</p>
                   <button
                     onClick={() => setEditingPending(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--brand-dark)', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-sans)' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--brand-dark)', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
                   >
                     <Edit2 size={14} /> Edit
                   </button>
@@ -561,20 +600,9 @@ export default function SalesDetailPage() {
             </div>
           </div>
         </div>
-
-        {/* Payment Status Badge */}
-        {sale.isPaid ? (
-          <div style={{ marginTop: 16, background: 'var(--success-bg)', padding: 12, borderRadius: 8, border: '1px solid var(--border-secondary)' }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--success-fg)', margin: 0 }}>✓ Fully Paid</p>
-          </div>
-        ) : (
-          <div style={{ marginTop: 16, background: 'var(--warning-bg)', padding: 12, borderRadius: 8, border: '1px solid var(--border-secondary)' }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--warning-fg)', margin: 0 }}>⏳ Pending Payment</p>
-          </div>
-        )}
       </div>
 
-      {/* Invoice Modal */}
+      {/* Invoice Challan Preview Modal */}
       {invoiceModal && (
         <Modal title={`Challan Preview - ${sale.saleNumber || sale.id?.slice(0, 8)}…`} onClose={() => setInvoiceModal(false)} width={700}>
           <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, overflow: 'hidden', marginBottom: 20 }}>
@@ -586,16 +614,14 @@ export default function SalesDetailPage() {
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
             <Button onClick={() => setInvoiceModal(false)} variant="secondary">Close</Button>
-            {sale.invoiceUrl && (
-              <a
-                href={`${STATIC_BASE}/${sale.invoiceUrl}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ background: 'var(--brand-dark)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-sans)' }}
-              >
-                <Download size={14} /> Download Challan
-              </a>
-            )}
+            <a
+              href={`${STATIC_BASE}/${sale.invoiceUrl}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ background: 'var(--brand-dark)', color: '#fff', padding: '10px 18px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Download size={14} /> Download Challan
+            </a>
           </div>
         </Modal>
       )}
@@ -612,16 +638,14 @@ export default function SalesDetailPage() {
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
             <Button onClick={() => setPdiModal(false)} variant="secondary">Close</Button>
-            {pdiUrl && (
-              <a
-                href={`${STATIC_BASE}/${pdiUrl}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ background: '#0ea5e9', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-sans)' }}
-              >
-                <Download size={14} /> Download PDI Slip
-              </a>
-            )}
+            <a
+              href={`${STATIC_BASE}/${pdiUrl}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ background: '#0ea5e9', color: '#fff', padding: '10px 18px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Download size={14} /> Download PDI Slip
+            </a>
           </div>
         </Modal>
       )}
@@ -633,51 +657,32 @@ export default function SalesDetailPage() {
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               Select a specific bike from available stock for this model and color.
             </p>
-            
             <Field label="Search by Chassis / Engine No">
               <input
                 type="text"
                 placeholder="Type to search..."
                 value={bikeSearch}
                 onChange={(e) => setBikeSearch(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  border: '1px solid var(--border-secondary)',
-                  fontSize: 13,
-                  fontFamily: 'var(--font-sans)',
-                  outline: 'none',
-                  marginBottom: 12
-                }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13, outline: 'none', marginBottom: 12 }}
               />
             </Field>
-
             <div style={{ maxHeight: 250, overflowY: 'auto', border: '1px solid var(--border-secondary)', borderRadius: 8, background: 'var(--bg-primary)' }}>
               {filteredBikes.length > 0 ? (
                 filteredBikes.map(b => (
                   <div
                     key={b.id}
                     onClick={() => setSelectedBikeId(b.id)}
-                    style={{
-                      padding: '12px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border-secondary)',
-                      backgroundColor: selectedBikeId === b.id ? 'var(--brand-light)' : 'transparent',
-                      transition: 'background 0.2s'
-                    }}
+                    style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid var(--border-secondary)', backgroundColor: selectedBikeId === b.id ? 'var(--brand-light)' : 'transparent' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{b.chassisNumber}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{b.chassisNumber}</span>
                       <span style={{ fontSize: 11, color: 'var(--brand-dark)', background: 'var(--brand-light)', padding: '2px 6px', borderRadius: 4 }}>In Stock</span>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Engine: {b.engineNumber}</div>
                   </div>
                 ))
               ) : (
-                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                  {availableBikes.length === 0 ? 'No stock available for this model/color' : 'No matching results'}
-                </div>
+                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>No stock units available</div>
               )}
             </div>
           </div>
@@ -687,6 +692,108 @@ export default function SalesDetailPage() {
           </div>
         </Modal>
       )}
+
+      {/* ── INTERACTIVE OPERATIONAL ITEM EXCHANGE MODAL ── */}
+      {exchangingItem && (
+        <Modal 
+          title={`Exchange Item - ${exchangingItem.itemType === 'BIKE' ? 'Vehicle Allocation' : 'Accessory Unit'}`} 
+          onClose={() => setExchangingItem(null)}
+        >
+          <div style={{ padding: '4px 0 12px 0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', padding: 12, borderRadius: 8, fontSize: 12, color: '#78350f' }}>
+              <strong>Original Item Ledger Value:</strong> {exchangingItem.quantity}x unit(s) at {fmtINR(exchangingItem.unitPrice)} each. Net value was: <strong>{fmtINR(exchangingItem.lineTotal)}</strong>.
+            </div>
+
+            {/* <Field label="Replacement Category Type">
+              <select
+                value={exchangeType}
+                onChange={(e) => setExchangeType(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13 }}
+              >
+                <option value="BIKE">BIKE MODEL</option>
+                <option value="ACCESSORY">ACCESSORY STOCK VARIANT</option>
+              </select>
+            </Field> */}
+
+            <Field label="Choose Replacement Catalog Choice">
+              <select
+                value={selectedTargetId}
+                onChange={(e) => setSelectedTargetId(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13 }}
+              >
+                <option value="">-- Select Active Variant --</option>
+                {catalogList.map(asset => (
+                  <option key={asset.id} value={asset.id}>
+                    {asset.name} {asset.brand ? `[${asset.brand}]` : ''} {asset.price || asset.exShowroomPrice ? `(MSRP: ₹${asset.price || asset.exShowroomPrice})` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {exchangeType === 'BIKE' ? (
+              <Field label="Color">
+                <input 
+                  type="text" 
+                  placeholder="e.g. Techno Blue / Sports Red"
+                  value={exchColor}
+                  onChange={(e) => setExchColor(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13 }}
+                />
+              </Field>
+            ) : (
+              <Field label="Quantity">
+                <input 
+                  type="number" 
+                  min="1"
+                  value={exchQty}
+                  onChange={(e) => setExchQty(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13 }}
+                />
+              </Field>
+            )}
+
+            <Field label="Custom Price Override">
+                <input 
+                  type="number" 
+                  placeholder="Leave blank for showroom default"
+                  value={exchUnitPrice}
+                  onChange={(e) => setExchUnitPrice(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13 }}
+                />
+              </Field>
+
+            {/* <div s/tyle={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}> */}
+              
+              {/* <Field label="Deduction / Discount Amount">
+                <input 
+                  type="number" 
+                  min="0"
+                  value={exchDiscount}
+                  onChange={(e) => setExchDiscount(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13 }}
+                />
+              </Field> */}
+            {/* </div> */}
+
+            <Field label="Operational Audit Notes">
+              <textarea 
+                rows="2"
+                placeholder="State the reason for this item exchange transaction..."
+                value={exchNotes}
+                onChange={(e) => setExchNotes(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-secondary)', fontSize: 13, resize: 'none' }}
+              />
+            </Field>
+          </div>
+          
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
+            <Button onClick={() => setExchangingItem(null)} variant="secondary" disabled={processingExchange}>Cancel</Button>
+            <Button onClick={handleProcessExchange} disabled={processingExchange || !selectedTargetId}>
+              {processingExchange ? 'Processing...' : 'Execute Replacement'}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
-} 
+}

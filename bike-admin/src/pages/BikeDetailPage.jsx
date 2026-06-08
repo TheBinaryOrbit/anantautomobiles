@@ -29,6 +29,7 @@ export default function BikeDetailPage() {
         registrationNumber: data.registrationNumber || '',
         isRcArrived: !!data.isRcArrived,
         isNumberPlateReady: !!data.isNumberPlateReady,
+        isInsuranceRecived: !!data.isInsuranceRecived,
       });
     } catch (err) {
       toast.error('Failed to load bike details');
@@ -108,7 +109,7 @@ export default function BikeDetailPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ padding: '12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                 <label style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-                  Registration Number
+                  Number Plate
                 </label>
                 <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>
                   {bike.registrationNumber || 'N/A'}
@@ -124,10 +125,17 @@ export default function BikeDetailPage() {
                 <span style={{ fontSize: 14 }}>Number Plate Ready</span>
                 {bike.isNumberPlateReady ? <CheckCircle size={20} color="#10b981" /> : <XCircle size={20} color="#ef4444" />}
               </div>
+
+              
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 14 }}>Insurance Received</span>
+                {bike.isInsuranceRecived ? <CheckCircle size={20} color="#10b981" /> : <XCircle size={20} color="#ef4444" />}
+              </div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Field label="Registration Number">
+              <Field label="Number Plate">
                 <Input 
                   value={form.registrationNumber} 
                   onChange={e => setForm({...form, registrationNumber: e.target.value})}
@@ -153,6 +161,16 @@ export default function BikeDetailPage() {
                   onChange={e => setForm({...form, isNumberPlateReady: e.target.checked})} 
                 />
                 <label htmlFor="isNumberPlateReady" style={{ fontSize: 14 }}>Number Plate Ready</label>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <input 
+                  type="checkbox"
+                  id="isInsuranceRecived"
+                  checked={form.isInsuranceRecived}
+                  onChange={e => setForm({ ...form, isInsuranceRecived: e.target.checked })}
+                />
+                <label htmlFor="isInsuranceRecived" style={{ fontSize: 14 }}>Insurance Received</label>
               </div>
 
               <Button onClick={handleSave} disabled={saving} style={{ marginTop: 8 }}>

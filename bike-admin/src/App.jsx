@@ -23,6 +23,7 @@ import SalesCreatePage from './pages/SalesCreatePage';
 import SalesDetailPage from './pages/SalesDetailPage';
 import ExchangeBikesListPage from './pages/ExchangeBikesListPage';
 import ExchangeBikeDetailPage from './pages/ExchangeBikeDetailPage';
+import GalleryPage from './pages/GalleryPage.jsx';
 
 /* ── Inquiries List Components ── */
 import ServiceInquiryPage from './pages/ServiceInquiryPage.jsx'; 
@@ -98,6 +99,7 @@ function AppRoutes() {
         <Route path="/discounts" element={<DiscountsPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/roles" element={<RolesPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
         
         <Route path="/inquire-service" element={<ServiceInquiryPage />} />
         <Route path="/inquire-sales" element={<SalesInquiryPage />} />

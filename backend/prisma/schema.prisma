@@ -250,6 +250,7 @@ model SaleItem {
   unitPrice      Float // this will be exShowroomPrice
   discountAmount Float @default(0)
 
+  SaleItemStatus SaleItemStatus @default(SOLD)
   // Tax breakdown
   cgstRate Float @default(0)
   sgstRate Float @default(0)
@@ -482,7 +483,9 @@ enum SaleStatus {
   CONFIRMED // payment received
   DELIVERED // bike/items handed over
   CANCELLED
+  EXCHANGED
   REFUNDED
+  RETURNED
 }
 
 enum SaleItemType {
@@ -494,6 +497,7 @@ enum BikeStatus {
   AVAILABLE
   RESERVED
   SOLD
+  EXCHANGED
   IN_SERVICE
 }
 
@@ -538,4 +542,11 @@ enum paymentMethod {
   NET_BANKING
   FINANCE
   OTHER
+}
+
+
+enum SaleItemStatus {
+  SOLD
+  EXCHANGED
+  RETURNED
 }

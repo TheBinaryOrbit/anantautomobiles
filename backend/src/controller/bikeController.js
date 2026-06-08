@@ -82,6 +82,7 @@ class BikeController {
   async getBike(req, res, next) {
     try {
       const { id } = req.params;
+      
 
       if (!id) {
         return ApiResponse.badRequest(res, 'Bike ID is required');
@@ -99,7 +100,9 @@ class BikeController {
 
   async getAllBikes(req, res, next) {
     try {
-      const bikes = await bikeService.getAllBikes();
+      console.log(req.query);
+      const bikes = await bikeService.getAllBikes(req.query);
+  
       return ApiResponse.success(res, 'Bikes retrieved successfully', bikes, 200);
     } catch (error) {
       return ApiResponse.badRequest(res, error.message);

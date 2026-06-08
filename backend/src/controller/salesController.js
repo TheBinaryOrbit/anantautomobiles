@@ -165,6 +165,29 @@ class SalesController {
       return ApiResponse.badRequest(res, error.message);
     }
   }
+
+  async exchangeItem(req, res, next) {
+    try {
+      const { id } = req.params; // saleItemId
+      const { newItemType, newItemId } = req.body;
+
+      if (!id || !newItemType || !newItemId) {
+        return ApiResponse.badRequest(res, 'Sale Item ID, New Item Type, and New Item ID are all required parameters.');
+      }
+
+      const updatedSale = await salesService.exchangeSaleItem(id, req.body);
+      return ApiResponse.success(res, 'Item exchange successfully processed and invoice refreshed.', updatedSale, 200);
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message
+        });
+      }
+      return ApiResponse.badRequest(res, error.message || 'Error occurred while processing item exchange');
+    }
+  }
 }
 
 module.exports = new SalesController();
