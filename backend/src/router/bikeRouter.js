@@ -5,7 +5,7 @@ const { authMiddleware, checkPermission } = require('../middleware/auth');
 const router = express.Router();
 
 // View routes protected by view permissions
-router.get('/', authMiddleware, checkPermission('bike_view'), (req, res, next) => bikeController.getAllBikes(req, res, next));
+router.get('/', (req, res, next) => bikeController.getAllBikes(req, res, next));
 router.get('/:id', authMiddleware, checkPermission('bike_view'), (req, res, next) => bikeController.getBike(req, res, next));
 
 // Operational routes

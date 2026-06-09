@@ -6,7 +6,7 @@ const upload = require('../middleware/imageUpload');
 const router = express.Router();
 
 // View routes protected by view permissions
-router.get('/', authMiddleware, checkPermission('accessories_view'), (req, res, next) => accessoriesController.getAllAccessories(req, res, next));
+router.get('/', (req, res, next) => accessoriesController.getAllAccessories(req, res, next));
 router.get('/:id', authMiddleware, checkPermission('accessories_view'), (req, res, next) => accessoriesController.getAccessory(req, res, next));
 
 // Operational routes
