@@ -2,25 +2,26 @@ import React from 'react';
 import { X, TrendingUp, TrendingDown } from 'lucide-react';
 import { STATUS_COLORS, STOCK_TYPE } from '../../utils/constants';
 
-// Modern Light Theme System Tokens
+// Anant Automobiles - Premium Light Theme System Tokens
 const TOKENS = {
   colors: {
-    brand: '#4f46e5',         // Premium Indigo
-    brandLight: '#f5f3ff',
+    brand: '#E31837',         // Anant Red
+    brandDark: '#C4122C',     // Deep Crimson for gradients
+    brandLight: '#fce8eb',    // Soft Red Accent
     success: '#10b981',       // Emerald Green
-    danger: '#ef4444',        // Crisp Red
+    danger: '#ef4444',        // Crisp Red (Standard error)
     dangerBg: '#fef2f2',
     bgPrimary: '#ffffff',     // Card Surface
-    bgSecondary: '#f8fafc',   // Alternating Rows / Input Surfaces
-    textPrimary: '#0f172a',   // Deep Slate Body
-    textSecondary: '#475569', // Medium Slate
-    textMuted: '#94a3b8',     // Subtext
-    border: '#e2e8f0',        // Soft Borders
+    bgSecondary: '#f9fafb',   // Alternating Rows / Input Surfaces
+    textPrimary: '#111827',   // Deep Slate Body
+    textSecondary: '#6b7280', // Medium Slate
+    textMuted: '#9ca3af',     // Subtext
+    border: '#e5e7eb',        // Soft Borders
   },
   shadows: {
     sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
     md: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-    lg: '0 10px 15px -3px rgba(148, 163, 184, 0.1), 0 4px 6px -4px rgba(148, 163, 184, 0.05)',
+    lg: '0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 10px -4px rgba(0, 0, 0, 0.04)',
   }
 };
 
@@ -61,16 +62,16 @@ export function StockBadge({ label }) {
 export function Button({ children, variant = 'primary', size = 'md', ...props }) {
   const base = {
     display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center',
-    borderRadius: 8, fontFamily: 'var(--font-sans, sans-serif)',
+    borderRadius: 8, fontFamily: 'var(--font-sans, "Inter", sans-serif)',
     fontWeight: 600, cursor: props.disabled ? 'not-allowed' : 'pointer', border: '1px solid transparent',
-    transition: 'all 0.15s ease',
+    transition: 'all 0.2s ease',
     opacity: props.disabled ? 0.6 : 1,
     fontSize: size === 'sm' ? 12 : 14,
     padding: size === 'sm' ? '6px 12px' : size === 'lg' ? '12px 24px' : '9px 18px',
     boxShadow: variant === 'ghost' ? 'none' : TOKENS.shadows.sm,
   };
   const variants = {
-    primary:   { background: `linear-gradient(135deg, ${TOKENS.colors.brand}, #6366f1)`, color: '#fff' },
+    primary:   { background: `linear-gradient(90deg, ${TOKENS.colors.brand} 0%, ${TOKENS.colors.brandDark} 100%)`, color: '#fff', boxShadow: '0 4px 12px rgba(227, 24, 55, 0.2)' },
     danger:    { background: TOKENS.colors.danger, color: '#fff' },
     secondary: { background: TOKENS.colors.bgPrimary, color: TOKENS.colors.textPrimary, border: `1px solid ${TOKENS.colors.border}` },
     ghost:     { background: 'transparent', color: TOKENS.colors.textSecondary, border: `1px solid ${TOKENS.colors.border}` },
@@ -99,14 +100,14 @@ export function Input({ style, ...props }) {
         border: `1px solid ${TOKENS.colors.border}`,
         background: TOKENS.colors.bgPrimary,
         fontSize: 14, color: TOKENS.colors.textPrimary,
-        fontFamily: 'var(--font-sans, sans-serif)',
-        outline: 'none', transition: 'all 0.15s ease',
+        fontFamily: 'var(--font-sans, "Inter", sans-serif)',
+        outline: 'none', transition: 'all 0.2s ease',
         boxSizing: 'border-box',
         ...style,
       }}
       onFocus={e => { 
         e.target.style.borderColor = TOKENS.colors.brand; 
-        e.target.style.boxShadow = `0 0 0 3px rgba(79, 70, 229, 0.1)`;
+        e.target.style.boxShadow = `0 0 0 3px rgba(227, 24, 55, 0.15)`;
       }}
       onBlur={e => { 
         e.target.style.borderColor = TOKENS.colors.border; 
@@ -128,14 +129,14 @@ export function Textarea({ style, ...props }) {
         border: `1px solid ${TOKENS.colors.border}`,
         background: TOKENS.colors.bgPrimary,
         fontSize: 14, color: TOKENS.colors.textPrimary,
-        fontFamily: 'var(--font-sans, sans-serif)', resize: 'vertical',
-        outline: 'none', transition: 'all 0.15s ease',
+        fontFamily: 'var(--font-sans, "Inter", sans-serif)', resize: 'vertical',
+        outline: 'none', transition: 'all 0.2s ease',
         boxSizing: 'border-box',
         ...style,
       }}
       onFocus={e => { 
         e.target.style.borderColor = TOKENS.colors.brand; 
-        e.target.style.boxShadow = `0 0 0 3px rgba(79, 70, 229, 0.1)`;
+        e.target.style.boxShadow = `0 0 0 3px rgba(227, 24, 55, 0.15)`;
       }}
       onBlur={e => { 
         e.target.style.borderColor = TOKENS.colors.border; 
@@ -157,7 +158,7 @@ export function Select({ children, style, ...props }) {
         border: `1px solid ${TOKENS.colors.border}`,
         background: TOKENS.colors.bgPrimary,
         fontSize: 14, color: TOKENS.colors.textPrimary,
-        fontFamily: 'var(--font-sans, sans-serif)', cursor: 'pointer',
+        fontFamily: 'var(--font-sans, "Inter", sans-serif)', cursor: 'pointer',
         outline: 'none', boxSizing: 'border-box',
         ...style,
       }}
@@ -192,13 +193,13 @@ export function Field({ label, children, style, error, fullWidth }) {
 export function Modal({ title, onClose, children, width = 600 }) {
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(17, 24, 39, 0.5)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{ background: TOKENS.colors.bgPrimary, borderRadius: 16, border: `1px solid ${TOKENS.colors.border}`, width: `min(${width}px, calc(100% - 2rem))`, maxHeight: '90vh', overflowY: 'auto', boxShadow: TOKENS.shadows.lg, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(1rem, 2vw, 1.5rem)', borderBottom: `1px solid ${TOKENS.colors.border}`, flexShrink: 0 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: TOKENS.colors.textPrimary }}>{title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: TOKENS.colors.textMuted, display: 'flex', alignItems: 'center', padding: 6, borderRadius: 6, transition: 'color 0.15s' }} onMouseEnter={e => e.currentTarget.style.color = TOKENS.colors.textPrimary} onMouseLeave={e => e.currentTarget.style.color = TOKENS.colors.textMuted}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: TOKENS.colors.textMuted, display: 'flex', alignItems: 'center', padding: 6, borderRadius: 6, transition: 'all 0.2s ease' }} onMouseEnter={e => { e.currentTarget.style.color = TOKENS.colors.brand; e.currentTarget.style.background = TOKENS.colors.brandLight; }} onMouseLeave={e => { e.currentTarget.style.color = TOKENS.colors.textMuted; e.currentTarget.style.background = 'none'; }}>
             <X size={20} />
           </button>
         </div>
@@ -253,12 +254,12 @@ export function Table({ cols, rows, onEdit, onDelete, extraActions }) {
                 <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {extraActions && extraActions(row)}
                   {onEdit && (
-                    <button onClick={() => onEdit(row)} style={{ background: 'transparent', color: TOKENS.colors.brand, border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginRight: 6, fontFamily: 'var(--font-sans, sans-serif)' }}>
+                    <button onClick={() => onEdit(row)} style={{ background: 'transparent', color: TOKENS.colors.brand, border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginRight: 6, fontFamily: 'var(--font-sans, "Inter", sans-serif)' }}>
                       Edit
                     </button>
                   )}
                   {onDelete && (
-                    <button onClick={() => onDelete(row)} style={{ background: 'transparent', color: TOKENS.colors.danger, border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans, sans-serif)' }}>
+                    <button onClick={() => onDelete(row)} style={{ background: 'transparent', color: TOKENS.colors.danger, border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans, "Inter", sans-serif)' }}>
                       Delete
                     </button>
                   )}
@@ -280,7 +281,7 @@ export function PageHeader({ icon: Icon, title, subtitle, onAdd, addLabel }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         {Icon && (
-          <div style={{ width: 50, height: 50, background: `linear-gradient(135deg, ${TOKENS.colors.brand}, #6366f1)`, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0, boxShadow: '0 8px 16px -4px rgba(79, 70, 229, 0.3)' }}>
+          <div style={{ width: 50, height: 50, background: `linear-gradient(135deg, ${TOKENS.colors.brand} 0%, ${TOKENS.colors.brandDark} 100%)`, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0, boxShadow: '0 8px 16px -4px rgba(227, 24, 55, 0.3)' }}>
             <Icon size={24} />
           </div>
         )}
@@ -304,8 +305,8 @@ export function SearchBar({ value, onChange, placeholder, children }) {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder || 'Search...'}
-        style={{ flex: 1, minWidth: 200, padding: '10px 16px', borderRadius: 8, border: `1px solid ${TOKENS.colors.border}`, background: TOKENS.colors.bgPrimary, fontSize: 14, color: TOKENS.colors.textPrimary, fontFamily: 'var(--font-sans, sans-serif)', outline: 'none', transition: 'all 0.15s ease' }}
-        onFocus={e => { e.target.style.borderColor = TOKENS.colors.brand; e.target.style.boxShadow = `0 0 0 3px rgba(79, 70, 229, 0.1)`; }}
+        style={{ flex: 1, minWidth: 200, padding: '10px 16px', borderRadius: 8, border: `1px solid ${TOKENS.colors.border}`, background: TOKENS.colors.bgPrimary, fontSize: 14, color: TOKENS.colors.textPrimary, fontFamily: 'var(--font-sans, "Inter", sans-serif)', outline: 'none', transition: 'all 0.2s ease' }}
+        onFocus={e => { e.target.style.borderColor = TOKENS.colors.brand; e.target.style.boxShadow = `0 0 0 3px rgba(227, 24, 55, 0.15)`; }}
         onBlur={e => { e.target.style.borderColor = TOKENS.colors.border; e.target.style.boxShadow = 'none'; }}
       />
       {children}
@@ -323,11 +324,9 @@ export function StatCard({ label, value, icon: Icon, accent = TOKENS.colors.bran
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, color: TOKENS.colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>{label}</div>
         <div style={{ fontSize: 28, fontWeight: 700, color: TOKENS.colors.textPrimary, letterSpacing: '-0.03em', marginBottom: 6 }}>{value}</div>
-        
-        
       </div>
       {Icon && (
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${accent} 0%, #ffffff 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TOKENS.colors.textPrimary, flexShrink: 0, boxShadow: '0 4px 10px -2px rgba(0,0,0,0.05)' }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${accent} 0%, #ffffff 100%)`, border: `1px solid rgba(227, 24, 55, 0.1)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TOKENS.colors.brand, flexShrink: 0, boxShadow: '0 4px 10px -2px rgba(227,24,55,0.05)' }}>
           <Icon size={24} />
         </div>
       )}
@@ -393,9 +392,9 @@ export function FormGrid({ children, cols = 2 }) {
    Dashboard Components (Avatar & Sparkline)
 ────────────────────────────────────────────── */
 export function Avatar({ name, size = 32 }) {
-  const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '??';
-  const colors = ['#e0f2fe', '#dcfce7', '#fef9c3', '#f3e8ff', '#ffe4e6'];
-  const textColors = ['#0369a1', '#15803d', '#a16207', '#6b21a8', '#b91c1c'];
+  const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'AA';
+  const colors = ['#fce8eb', '#e0f2fe', '#dcfce7', '#fef9c3', '#f3e8ff'];
+  const textColors = ['#E31837', '#0369a1', '#15803d', '#a16207', '#6b21a8'];
   const charCodeSum = name ? name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
   const colorIndex = charCodeSum % colors.length;
 
@@ -404,7 +403,7 @@ export function Avatar({ name, size = 32 }) {
       width: size, height: size, borderRadius: '50%',
       backgroundColor: colors[colorIndex], color: textColors[colorIndex],
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.4, fontWeight: 700, fontFamily: 'var(--font-sans, sans-serif)',
+      fontSize: size * 0.4, fontWeight: 700, fontFamily: 'var(--font-sans, "Inter", sans-serif)',
       userSelect: 'none', flexShrink: 0
     }}>
       {initials}
@@ -412,7 +411,7 @@ export function Avatar({ name, size = 32 }) {
   );
 }
 
-export function Sparkline({ data = [10, 15, 8, 22, 14, 25], width = 120, height = 40, color = '#4f46e5' }) {
+export function Sparkline({ data = [10, 15, 8, 22, 14, 25], width = 120, height = 40, color = TOKENS.colors.brand }) {
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min === 0 ? 1 : max - min;
