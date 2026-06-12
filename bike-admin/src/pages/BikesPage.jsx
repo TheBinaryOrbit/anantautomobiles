@@ -236,16 +236,7 @@ export default function BikesPage() {
                       >
                         <Eye size={16} />
                       </button>
-                      {row.status === 'AVAILABLE' && (
-                        <button onClick={() => handleBook(row)} style={{ background: '#FAEEDA', color: '#633806', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', marginRight: 6, fontFamily: 'var(--font-sans)' }}>
-                          Book
-                        </button>
-                      )}
-                      {row.status === 'RESERVED' && (
-                        <button onClick={() => handleCreateSale(row)} style={{ background: '#E6F1FB', color: '#0C447C', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', marginRight: 6, fontFamily: 'var(--font-sans)' }}>
-                          Create Sale
-                        </button>
-                      )}
+                      
                     </>
                   )}
                 />

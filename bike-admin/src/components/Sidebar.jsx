@@ -1,13 +1,13 @@
 import * as Icons from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useWindowSize from '../hooks/useWindowSize.js';
-import { useNavigation } from '../context/NavigationContext'; // Import the computed navigation context hook
+import { useNavigation } from '../context/NavigationContext';
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isMobile } = useWindowSize();
-  const { navItems } = useNavigation(); // Grab the dynamically filtered nav item array map list
+  const { navItems } = useNavigation();
 
   const handleNavigate = (path) => {
     navigate(path);
@@ -18,13 +18,16 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
+      {/* Mobile Overlay with blur */}
       {isMobile && isOpen && (
         <div
           onClick={onClose}
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
+            background: 'rgba(17, 24, 39, 0.6)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             zIndex: 40,
             top: 56,
           }}
@@ -32,8 +35,9 @@ export default function Sidebar({ isOpen, onClose }) {
       )}
 
       <aside style={{
-        width: 224,
-        background: 'var(--bg-sidebar)',
+        width: 260, // Slightly wider for a more breathable layout
+        background: '#000000', // Premium deep dark gradient
+        fontFamily: '"Inter", "Segoe UI", sans-serif',
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
@@ -42,41 +46,43 @@ export default function Sidebar({ isOpen, onClose }) {
         top: isMobile ? 56 : 0,
         left: 0,
         zIndex: isMobile ? 50 : 'auto',
-        boxShadow: isMobile ? '2px 0 8px rgba(0, 0, 0, 0.1)' : 'none',
+        boxShadow: isMobile ? '4px 0 24px rgba(0, 0, 0, 0.2)' : 'none',
+        borderRight: '1px solid rgba(255,255,255,0.05)',
       }}>
-        {/* Logo and Branding header blocks */}
+        {/* Logo and Branding Header */}
         <div style={{ 
-          padding: '1.25rem 1.1rem', 
+          padding: '1.5rem 1.25rem', 
           borderBottom: '1px solid rgba(255,255,255,0.06)', 
           display: 'flex', 
           alignItems: 'center', 
-          gap: 10 
+          gap: 14 
         }}>
           <div style={{ 
-            width: 34, 
-            height: 34, 
-            background: '#534AB7', 
-            borderRadius: 9, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            flexShrink: 0 
+            width: 50, 
+            height: 50, 
+            // Anant Red Gradient
           }}>
-            <Icons.Bike size={17} color="#fff" />
+            <img src="../../public/Logo_Footer.jpg" alt="Anant Auto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Anant Automobiles</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.3px' }}>
+              Anant Auto
+            </div>
             <div style={{ 
-              fontSize: 10, 
-              color: 'rgba(255,255,255,0.45)', 
+              fontSize: 11, 
+              fontWeight: 500,
+              color: 'rgba(255,255,255,0.5)', 
               textTransform: 'uppercase', 
-              letterSpacing: '0.06em' 
-            }}>Admin</div>
+              letterSpacing: '0.08em',
+              marginTop: 2
+            }}>
+              Management
+            </div>
           </div>
         </div>
 
-        {/* Dynamic Navigation rendering list container frame */}
-        <nav style={{ flex: 1, padding: '0.6rem 0.5rem', overflowY: 'auto' }}>
+        {/* Dynamic Navigation */}
+        <nav style={{ flex: 1, padding: '1.25rem 0.75rem', overflowY: 'auto' }}>
           {navItems.map(item => {
             const Icon = Icons[item.iconName];
             const active = location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/');
@@ -89,44 +95,48 @@ export default function Sidebar({ isOpen, onClose }) {
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: '9px 11px',
-                  borderRadius: 8,
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: '8px',
                   border: 'none',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: active ? 500 : 400,
-                  background: active ? 'rgba(83,74,183,0.25)' : 'transparent',
-                  color: active ? '#A89EFF' : 'rgba(255,255,255,0.5)',
-                  marginBottom: 2,
-                  transition: 'all 0.12s',
+                  fontSize: 14,
+                  fontWeight: active ? 600 : 500,
+                  // Sleek red highlight for active state
+                  background: active ? 'linear-gradient(90deg, rgba(227,24,55,0.15) 0%, rgba(227,24,55,0) 100%)' : 'transparent',
+                  color: active ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                  borderLeft: active ? '3px solid #E31837' : '3px solid transparent',
+                  marginBottom: 4,
+                  transition: 'all 0.2s ease',
                 }}
                 onMouseEnter={e => {
                   if (!active) {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
                   }
                 }}
                 onMouseLeave={e => {
                   if (!active) {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.55)';
                   }
                 }}
               >
-                {Icon && <Icon size={15} />}
+                {Icon && <Icon size={18} style={{ color: active ? '#E31837' : 'inherit' }} />}
                 {item.label}
               </button>
             );
           })}
         </nav>
 
+        {/* Footer */}
         <div style={{ 
-          padding: '0.75rem 1.1rem', 
+          padding: '1rem 1.25rem', 
           borderTop: '1px solid rgba(255,255,255,0.06)', 
-          fontSize: 10, 
-          color: 'rgba(255,255,255,0.25)' 
+          fontSize: 11, 
+          color: 'rgba(255,255,255,0.3)',
+          textAlign: 'center'
         }}>
           © 2026 Anant Automobiles
         </div>
