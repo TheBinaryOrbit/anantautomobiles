@@ -462,7 +462,7 @@ export default function SalesPage() {
                 <Input placeholder="email@example.com" value={newCust.email || ''} onChange={e => setNewCust(n => ({ ...n, email: e.target.value }))} />
               </Field>
               <Field label="Phone *">
-                <Input placeholder="Phone Number" value={newCust.phone || ''} onChange={e => setNewCust(n => ({ ...n, phone: e.target.value }))} />
+                <Input maxLength={10} placeholder="Phone Number" value={newCust.phone || ''} onChange={e => setNewCust(n => ({ ...n, phone: e.target.value }))} />
               </Field>
               <Field label="Date of Birth *">
                 <Input type="date" value={newCust.dob || ''} onChange={e => setNewCust(n => ({ ...n, dob: e.target.value }))} />
