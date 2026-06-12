@@ -2,7 +2,7 @@ const prisma = require('../config/db');
 
 class InquiryService {
   // ─── Service Inquiries ───
-  async createServiceInquiry(data) {
+  async createServiceInquiry({data}) {
     console.log('Creating service inquiry with data:', data);
     
     if (!prisma.serviceInquiry) throw new Error("Prisma model 'serviceInquiry' is not initialized.");
@@ -33,7 +33,7 @@ class InquiryService {
   }
 
   // ─── Sales Inquiries ───
-  async createSalesInquiry(data) {
+  async createSalesInquiry({data}) {
     if (!prisma.salesInquiry) throw new Error("Prisma model 'salesInquiry' is not initialized.");
     console.log('Creating sales inquiry with data:', data);
     return await prisma.salesInquiry.create({
