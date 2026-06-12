@@ -6,7 +6,7 @@ const upload = require('../middleware/imageUpload');
 const router = express.Router();
 
 // View routes protected by view permissions
-router.get('/', authMiddleware, checkPermission('discounts_view'), (req, res, next) => discountController.getAllDiscounts(req, res, next));
+router.get('/', (req, res, next) => discountController.getAllDiscounts(req, res, next));
 router.get('/active', authMiddleware, checkPermission('discounts_view'), (req, res, next) => discountController.getActiveDiscounts(req, res, next));
 router.get('/:id', authMiddleware, checkPermission('discounts_view'), (req, res, next) => discountController.getDiscount(req, res, next));
 
