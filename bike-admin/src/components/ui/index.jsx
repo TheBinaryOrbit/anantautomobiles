@@ -16,7 +16,8 @@ const TOKENS = {
     textPrimary: '#111827',   // Deep Slate Body
     textSecondary: '#6b7280', // Medium Slate
     textMuted: '#9ca3af',     // Subtext
-    border: '#e5e7eb',        // Soft Borders
+    border: '#e5e7eb',
+    tableheader: "#E31837"        // Soft Borders
   },
   shadows: {
     sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
@@ -219,14 +220,14 @@ export function Table({ cols, rows, onEdit, onDelete, extraActions }) {
     <div style={{ overflowX: 'auto', background: TOKENS.colors.bgPrimary, borderRadius: 12, border: `1px solid ${TOKENS.colors.border}`, boxShadow: TOKENS.shadows.sm }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
         <thead>
-          <tr style={{ background: TOKENS.colors.bgSecondary, borderBottom: `1px solid ${TOKENS.colors.border}` }}>
+          <tr style={{ background: TOKENS.colors.tableheader, borderBottom: `1px solid ${TOKENS.colors.border}` }}>
             {cols.map(c => (
-              <th key={c.key} style={{ textAlign: 'left', padding: '12px 16px', color: TOKENS.colors.textSecondary, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <th key={c.key} style={{ textAlign: 'left', padding: '12px 16px', color: TOKENS.colors.bgPrimary, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {c.label}
               </th>
             ))}
             {(onEdit || onDelete || extraActions) && (
-              <th style={{ textAlign: 'right', padding: '12px 16px', color: TOKENS.colors.textSecondary, fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+              <th style={{ textAlign: 'right', padding: '12px 16px', color: TOKENS.colors.bgPrimary, fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
             )}
           </tr>
         </thead>
