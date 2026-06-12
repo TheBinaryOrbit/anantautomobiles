@@ -2,6 +2,7 @@ import * as Icons from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useWindowSize from '../hooks/useWindowSize.js';
 import { useNavigation } from '../context/NavigationContext';
+import Logo from '../../public/Logo_footer.jpg';
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
@@ -62,7 +63,7 @@ export default function Sidebar({ isOpen, onClose }) {
             height: 50, 
             // Anant Red Gradient
           }}>
-            <img src="../../public/Logo_Footer.jpg" alt="Anant Auto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={Logo} alt="Anant Auto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.3px' }}>
