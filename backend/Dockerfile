@@ -42,6 +42,7 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY src ./src
 COPY index.js .
 COPY public ./public
+COPY scripts ./scripts
 COPY prisma.config.ts ./
 
 # Create uploads directory
