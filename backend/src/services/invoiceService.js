@@ -77,22 +77,27 @@ class InvoiceService {
         // Dealership Address (below logo)
         doc.font('Helvetica-Bold')
             .fontSize(8)
-            .fillColor(DARK_GRAY)
-            .text(
-                'Address : Hero - Anant Automobiles, Ahmadgarh, Uttar Pradesh 203392',
-                MARGIN,
-                startY + 42,
-                { width: 250 }
-            );
+            .fillColor(DARK_GRAY);
 
-        doc.font('Helvetica-Bold')
-            .fontSize(8)
-            .fillColor(DARK_GRAY)
-            .text(
-                'Phone Number : 8650507572',
-                MARGIN,
-                startY + 54
-            );
+        const address = 'Address: Hero - Anant Automobiles, Front Of Indian Petrol Pump, Ahmadgarh, Uttar Pradesh 203392';
+
+        const addressY = startY + 50;
+
+        doc.text(address, MARGIN, addressY, {
+            width: 250
+        });
+
+        // Calculate how much vertical space the address used
+        const addressHeight = doc.heightOfString(address, {
+            width: 250
+        });
+
+        // Phone number below the address
+        doc.text(
+            'Phone Number: 8650507572',
+            MARGIN,
+            addressY + addressHeight + 4
+        );
 
         // ── Invoice # / Date (top-right) ─────────────────────────────────────────
         const invInfoY = startY + 36;
