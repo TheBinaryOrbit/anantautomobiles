@@ -28,11 +28,14 @@ async function main() {
 
     for (const sale of sales) {
       try {
-        // if (sale.invoiceUrl) {
-        //   skipped += 1;
-        //   console.log(`Skipping sale ${sale.id} (${sale.saleNumber || 'N/A'}) because it already has an invoice URL.`);
-        //   continue;
-        // }
+        if (sale.invoiceUrl) {
+          try {
+            await invoiceService.deleteInvoice(sale.invoiceUrl);
+            console.log(`Deleted previous invoice file for sale ${sale.id} (${sale.saleNumber || 'N/A'}): ${sale.invoiceUrl}`);
+          } catch (deleteError) {
+            console.warn(`Could not delete previous invoice file for sale ${sale.id}:`, deleteError.message);
+          }
+        }
 
         const invoiceInfo = await invoiceService.saveInvoice(sale);
 
