@@ -28,11 +28,11 @@ async function main() {
 
     for (const sale of sales) {
       try {
-        if (sale.invoiceUrl) {
-          skipped += 1;
-          console.log(`Skipping sale ${sale.id} (${sale.saleNumber || 'N/A'}) because it already has an invoice URL.`);
-          continue;
-        }
+        // if (sale.invoiceUrl) {
+        //   skipped += 1;
+        //   console.log(`Skipping sale ${sale.id} (${sale.saleNumber || 'N/A'}) because it already has an invoice URL.`);
+        //   continue;
+        // }
 
         const invoiceInfo = await invoiceService.saveInvoice(sale);
 
