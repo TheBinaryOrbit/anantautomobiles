@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL =  'https://backend.yaytech.in/api';  
+const BASE_URL =  'https://api.anantautomobiles.com/api';  
 // const BASE_URL =  'http://localhost:3000/api';  
 
 const api = axios.create({ baseURL: BASE_URL });
