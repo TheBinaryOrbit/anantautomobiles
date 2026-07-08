@@ -200,7 +200,7 @@ export default function SalesPage() {
   };
 
   const cols = [
-    { key: 'saleNumber',    label: 'Sale No.', render: r => <code style={{ fontSize: 11, background: 'var(--brand-light)', color: 'var(--brand-dark)', padding: '2px 6px', borderRadius: 4 }}>{r.saleNumber || r.id?.slice(0, 8)}…</code> },
+    { key: 'saleNumber',    label: 'Sale No.', render: r => <code style={{ fontSize: 11, background: 'var(--brand-light)', color: 'var(--brand-dark)', padding: '2px 6px', borderRadius: 4 }}>{r.saleNumber}</code> },
     { key: 'customer',      label: 'Customer', render: r => r.customer?.name || '—' },
     { key: 'totalAmount',   label: 'Total',    render: r => fmtINR(r.totalAmount) },
     { key: 'status',        label: 'Status',   render: r => <Badge label={r.status} /> },
