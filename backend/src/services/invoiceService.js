@@ -71,7 +71,25 @@ class InvoiceService {
     // ─── PAGE 1: TAX INVOICE / DELIVERY CHALLAN (UPPER SECTION) ──────────────
     _buildInvoicePage(doc, sale, startY = 30) {
         // ── Logo ──────────────────────────────────────────────────────────────────
+        // ── Logo ──────────────────────────────────────────────────────────────────
         this._drawLogo(doc, MARGIN, startY, 120, 38);
+
+        // Dealership Address (below logo)
+        doc.font('Helvetica')
+            .fontSize(8)
+            .fillColor(DARK_GRAY)
+            .text(
+                'Hero - Anant Automobiles, Ahmadgarh, Uttar Pradesh 203392',
+                MARGIN,
+                startY + 42,
+                { width: 250 }
+            );
+
+        doc.text(
+            'Phone: 8650507572',
+            MARGIN,
+            startY + 54
+        );
 
         // ── Invoice # / Date (top-right) ─────────────────────────────────────────
         const invInfoY = startY + 36;
@@ -92,7 +110,7 @@ class InvoiceService {
             .text(new Date(sale.saleDate).toLocaleString('en-IN'),
                 invValX, invInfoY + 13, { width: 130, align: 'right' });
 
-        const addrTop = startY + 44;
+        const addrTop = startY + 60;
         const divY = addrTop + 35;
         this._hr(doc, divY, RED, 1.5);
 
