@@ -103,26 +103,46 @@ class InvoiceService {
 
         const addr = sale.customer?.address || {};
         const addrStr = [
-            addr.addressLine1, addr.addressLine2,
-            addr.city, addr.state, addr.postalCode,
+            addr.addressLine1,
+            addr.addressLine2,
+            addr.city,
+            addr.state,
+            addr.postalCode,
         ].filter(Boolean).join(', ');
 
         const rows = [
             ['Customer Name', sale.customer?.name || ''],
             ['Mobile / Contact', formatPhone(sale.customer?.phone)],
-            ['Address Address', addrStr],
+            ['Address', addrStr],
             ['Finance Company', sale.financeCompany || 'N/A'],
             ['Payment Type', sale.paymentType || ''],
             ['Overall Status', sale.status || 'PENDING']
         ];
 
         let gy = gridTop;
+
         rows.forEach(([lbl, val]) => {
-            doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY)
+            // Calculate the height required for the value
+            const valueHeight = doc.heightOfString(val || '', {
+                width: VAL_W,
+                align: 'left'
+            });
+
+            const rowHeight = Math.max(12, valueHeight + 2);
+
+            doc.font('Helvetica-Bold')
+                .fontSize(8)
+                .fillColor(DARK_GRAY)
                 .text(lbl, MARGIN, gy, { width: LBL_W });
-            doc.font('Helvetica').fontSize(8).fillColor(BLACK)
-                .text(val, MARGIN + LBL_W + 4, gy, { width: VAL_W });
-            gy += 12;
+
+            doc.font('Helvetica')
+                .fontSize(8)
+                .fillColor(BLACK)
+                .text(val || '', MARGIN + LBL_W + 4, gy, {
+                    width: VAL_W
+                });
+
+            gy += rowHeight;
         });
 
         this._hr(doc, gy + 4, MID_GRAY);
@@ -212,12 +232,6 @@ class InvoiceService {
         // this._rtxt(doc, (sale.pendingAmount || 0).toFixed(2), sumValX, rowY, 90);
         // rowY += 16;
 
-        this._hr(doc, rowY, MID_GRAY, 0.5);
-        rowY += 10;
-
-        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY);
-        doc.text("Customer's Acknowledgement Signature", MARGIN, rowY);
-        doc.text('Authorized Signatory (Anant Hero)', PAGE_W - MARGIN - 180, rowY, { width: 180, align: 'right' });
 
         return rowY + 25;
     }
@@ -226,7 +240,15 @@ class InvoiceService {
     // ─── PAGE 1: GATE PASS (FIXED TO BOTTOM OF PAGE) ──────────────────────────
     _buildGatePassPage(doc, sale, startY) {
         const GATE_PASS_HEIGHT = 200;
-        let y = 920 - GATE_PASS_HEIGHT - MARGIN;
+        let y = 880 - GATE_PASS_HEIGHT - MARGIN;
+
+
+
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(DARK_GRAY);
+        doc.text("Customer's Acknowledgement Signature", MARGIN, y);
+        doc.text('Authorized Signatory (Anant Hero)', PAGE_W - MARGIN - 180, y, { width: 180, align: 'right' });
+
+        y += 40;
 
         // Scissor cutting line implementation
         doc.font('Helvetica').fontSize(9).fillColor(DARK_GRAY);
@@ -234,11 +256,35 @@ class InvoiceService {
 
         y += 20;
 
-        doc.font('Helvetica-Bold').fontSize(12).fillColor(BLACK).text('GATE PASS', MARGIN, y);
-        doc.font('Helvetica').fontSize(8).fillColor(DARK_GRAY)
-            .text(`Challan Ref: ${sale.saleNumber || sale.id || ''}  |  Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`, PAGE_W - MARGIN - 250, y, { width: 250, align: 'right' });
+        doc.font('Helvetica-Bold')
+            .fontSize(12)
+            .fillColor(BLACK)
+            .text('GATE PASS', MARGIN, y);
 
-        y += 16;
+        doc.font('Helvetica')
+            .fontSize(8)
+            .fillColor(DARK_GRAY)
+            .text(
+                `Challan Ref: ${sale.saleNumber || sale.id || ''}  |  Date: ${new Date(sale.saleDate).toLocaleDateString('en-IN')}`,
+                PAGE_W - MARGIN - 250,
+                y,
+                { width: 250, align: 'right' }
+            );
+
+        y += 14;
+
+        // Customer Name
+        doc.font('Helvetica-Bold')
+            .fontSize(8)
+            .fillColor(BLACK)
+            .text(
+                `Customer Name : ${sale.customer?.name || ''}`,
+                MARGIN,
+                y
+            );
+
+        y += 14;
+
         this._hr(doc, y, RED, 1);
         y += 8;
 
