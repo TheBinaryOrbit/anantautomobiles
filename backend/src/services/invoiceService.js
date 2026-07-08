@@ -75,21 +75,24 @@ class InvoiceService {
         this._drawLogo(doc, MARGIN, startY, 120, 38);
 
         // Dealership Address (below logo)
-        doc.font('Helvetica')
+        doc.font('Helvetica-Bold')
             .fontSize(8)
             .fillColor(DARK_GRAY)
             .text(
-                'Hero - Anant Automobiles, Ahmadgarh, Uttar Pradesh 203392',
+                'Address : Hero - Anant Automobiles, Ahmadgarh, Uttar Pradesh 203392',
                 MARGIN,
                 startY + 42,
                 { width: 250 }
             );
 
-        doc.text(
-            'Phone: 8650507572',
-            MARGIN,
-            startY + 54
-        );
+        doc.font('Helvetica-Bold')
+            .fontSize(8)
+            .fillColor(DARK_GRAY)
+            .text(
+                'Phone Number : 8650507572',
+                MARGIN,
+                startY + 54
+            );
 
         // ── Invoice # / Date (top-right) ─────────────────────────────────────────
         const invInfoY = startY + 36;
