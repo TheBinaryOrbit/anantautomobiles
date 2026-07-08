@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/services';
 import { Field, Input, Button } from '../components/ui';
+import Logo from '../../public/Logo_header.png';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -146,7 +147,7 @@ export default function LoginPage() {
           <div className="login-left">
             <div className="login-logo-box">
               <img 
-                src="../../public/Logo_Header.png" 
+                src={Logo} 
                 alt="Anant Automobiles" 
                 className="login-logo"
               />

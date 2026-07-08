@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Eye } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { customersApi } from '../api/services';
 import {
@@ -9,11 +9,26 @@ import {
 
 const EMPTY = {};
 
+// Helper function to format date for display
+const formatDate = (dateString) => {
+  if (!dateString) return '—';
+  try {
+    return new Date(dateString).toLocaleDateString('en-IN', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  } catch {
+    return dateString;
+  }
+};
+
 export default function CustomersPage() {
   const [items, setItems]       = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch]     = useState('');
-  const [modal, setModal]       = useState(null);
+  const [modal, setModal]       = useState(null); // Tracks edit/create actions
+  const [viewData, setViewData] = useState(null); // Tracks read-only viewing action
   const [form, setForm]         = useState(EMPTY);
   const [confirm, setConfirm]   = useState(null);
   const [loading, setLoading]   = useState(false);
@@ -40,10 +55,19 @@ export default function CustomersPage() {
   const save = async () => {
     setLoading(true);
     try {
-      const { name, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country } = form;
-      const payload = { name, phone, aadhaarNumber, panNumber, addressLine1, city, state, postalCode, country };
+      const { 
+        name, phone, dob, marriageAnniversary, aadhaarNumber, panNumber, 
+        addressLine1, addressLine2, city, state, postalCode, country 
+      } = form;
+
+      const payload = { 
+        name, phone, dob, marriageAnniversary, aadhaarNumber, panNumber, 
+        addressLine1, addressLine2, city, state, postalCode, country 
+      };
+
       if (modal.id) await customersApi.update(modal.id, payload);
       else           await customersApi.create(payload);
+      
       toast.success(modal.id ? 'Customer updated' : 'Customer added');
       load(); setModal(null);
     } catch (err) { toast.error(err.message); }
@@ -64,13 +88,48 @@ export default function CustomersPage() {
     setModal({ id: r.id, title: 'Edit Customer' });
   };
 
+  const openView = (r) => {
+    setViewData({ ...r, ...r.address });
+  };
+
+  // Columns definition mapping with a custom view action render injector
   const cols = [
-    { key: 'name',         label: 'Name' },
-    { key: 'phone',        label: 'Phone' },
-    { key: 'aadhaarNumber',label: 'Aadhaar' },
-    { key: 'panNumber',    label: 'PAN' },
-    { key: 'address',      label: 'City', render: r => r.address?.city || '—' },
+    { key: 'name',          label: 'Name' },
+    { key: 'phone',         label: 'Phone' },
+    { key: 'dob',           label: 'DOB', render: r => r.dob || '—' },
+    { key: 'aadhaarNumber', label: 'Aadhaar' },
+    { key: 'panNumber',     label: 'PAN' },
+    { key: 'address',       label: 'City', render: r => r.address?.city || '—' },
+    {
+      key: 'actions_view',
+      label: 'View',
+      render: r => (
+        <Button 
+          variant="secondary" 
+          onClick={() => openView(r)} 
+          style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Eye size={14} />
+          View
+        </Button>
+      )
+    }
   ];
+
+  // Inline style definition configuration for read-only typography representations
+  const readOnlyValueStyle = {
+    padding: '10px 12px',
+    background: 'var(--bg-secondary, #f9f9f9)',
+    border: '1px solid var(--border-primary, #e0e0e0)',
+    borderRadius: 6,
+    fontSize: 13.5,
+    color: 'var(--text-primary, #222)',
+    fontFamily: 'inherit',
+    minHeight: '38px',
+    display: 'flex',
+    alignItems: 'center',
+    wordBreak: 'break-word'
+  };
 
   return (
     <div>
@@ -80,11 +139,14 @@ export default function CustomersPage() {
         <Table cols={cols} rows={filtered} onEdit={openEdit} onDelete={r => setConfirm(r)} />
       </Card>
 
+      {/* EDIT / CREATE MODAL */}
       {modal && (
         <Modal title={modal.title} onClose={() => setModal(null)}>
           <FormGrid>
             <Field label="Full Name *"><Input value={form.name || ''} onChange={e => set('name', e.target.value)} /></Field>
             <Field label="Phone *"><Input value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></Field>
+            <Field label="Date of Birth"><Input type="date" value={form.dob || ''} onChange={e => set('dob', e.target.value)} /></Field>
+            <Field label="Marriage Anniversary"><Input type="date" value={form.marriageAnniversary || ''} onChange={e => set('marriageAnniversary', e.target.value)} /></Field>
             <Field label="Aadhaar Number"><Input value={form.aadhaarNumber || ''} onChange={e => set('aadhaarNumber', e.target.value)} /></Field>
             <Field label="PAN Number"><Input value={form.panNumber || ''} onChange={e => set('panNumber', e.target.value)} /></Field>
 
@@ -92,6 +154,7 @@ export default function CustomersPage() {
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Address</div>
               <FormGrid>
                 <Field label="Address Line 1" style={{ gridColumn: '1/-1' }}><Input value={form.addressLine1 || ''} onChange={e => set('addressLine1', e.target.value)} /></Field>
+                <Field label="Address Line 2" style={{ gridColumn: '1/-1' }}><Input value={form.addressLine2 || ''} onChange={e => set('addressLine2', e.target.value)} /></Field>
                 <Field label="City"><Input value={form.city || ''} onChange={e => set('city', e.target.value)} /></Field>
                 <Field label="State"><Input value={form.state || ''} onChange={e => set('state', e.target.value)} /></Field>
                 <Field label="Postal Code"><Input value={form.postalCode || ''} onChange={e => set('postalCode', e.target.value)} /></Field>
@@ -102,6 +165,35 @@ export default function CustomersPage() {
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
             <Button variant="secondary" onClick={() => setModal(null)}>Cancel</Button>
             <Button onClick={save} disabled={loading}>{loading ? 'Saving…' : 'Save'}</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* READ-ONLY VIEW DETAILS MODAL */}
+      {viewData && (
+        <Modal title="Customer Profile Details" onClose={() => setViewData(null)}>
+          <FormGrid>
+            <Field label="Full Name"><div style={readOnlyValueStyle}>{viewData.name || '—'}</div></Field>
+            <Field label="Phone Number"><div style={readOnlyValueStyle}>{viewData.phone || '—'}</div></Field>
+            <Field label="Date of Birth"><div style={readOnlyValueStyle}>{formatDate(viewData.dob)}</div></Field>
+            <Field label="Marriage Anniversary"><div style={readOnlyValueStyle}>{formatDate(viewData.marriageAnniversary)}</div></Field>
+            <Field label="Aadhaar Number"><div style={readOnlyValueStyle}>{viewData.aadhaarNumber || '—'}</div></Field>
+            <Field label="PAN Number"><div style={readOnlyValueStyle}>{viewData.panNumber || '—'}</div></Field>
+
+            <div style={{ gridColumn: '1/-1', borderTop: '0.5px solid var(--border-secondary)', paddingTop: 12, marginTop: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Address Details</div>
+              <FormGrid>
+                <Field label="Address Line 1" style={{ gridColumn: '1/-1' }}><div style={readOnlyValueStyle}>{viewData.addressLine1 || '—'}</div></Field>
+                <Field label="Address Line 2" style={{ gridColumn: '1/-1' }}><div style={readOnlyValueStyle}>{viewData.addressLine2 || '—'}</div></Field>
+                <Field label="City"><div style={readOnlyValueStyle}>{viewData.city || '—'}</div></Field>
+                <Field label="State"><div style={readOnlyValueStyle}>{viewData.state || '—'}</div></Field>
+                <Field label="Postal Code"><div style={readOnlyValueStyle}>{viewData.postalCode || '—'}</div></Field>
+                <Field label="Country"><div style={readOnlyValueStyle}>{viewData.country || '—'}</div></Field>
+              </FormGrid>
+            </div>
+          </FormGrid>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+            <Button onClick={() => setViewData(null)}>Close Window</Button>
           </div>
         </Modal>
       )}
