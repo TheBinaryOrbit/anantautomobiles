@@ -70,9 +70,15 @@ class InvoiceService {
     // ─── PAGE 1: TAX INVOICE / DELIVERY CHALLAN (UPPER SECTION) ──────────────
     // ─── PAGE 1: TAX INVOICE / DELIVERY CHALLAN (UPPER SECTION) ──────────────
     _buildInvoicePage(doc, sale, startY = 30) {
-        // ── Logo ──────────────────────────────────────────────────────────────────
-        // ── Logo ──────────────────────────────────────────────────────────────────
-        this._drawLogo(doc, MARGIN, startY, 120, 38);
+        // ── Title (centered, top of page) ───────────────────────────────────────
+        doc.font('Helvetica-Bold').fontSize(16).fillColor(RED)
+            .text('CHALLAN', MARGIN, startY, { width: CONTENT_W, align: 'center' });
+
+        const titleH = doc.heightOfString('CHALLAN', { width: CONTENT_W, align: 'center' });
+        const belowTitleY = startY + titleH + 12;
+
+        // ── Logo (left, below title) ────────────────────────────────────────────
+        this._drawLogo(doc, MARGIN, belowTitleY, 120, 38);
 
         // Dealership Address (below logo)
         doc.font('Helvetica-Bold')
@@ -81,7 +87,7 @@ class InvoiceService {
 
         const address = 'Address: Hero - Anant Automobiles, Front Of Indian Petrol Pump, Ahmadgarh, Uttar Pradesh 203392';
 
-        const addressY = startY + 50;
+        const addressY = belowTitleY + 46;
 
         doc.text(address, MARGIN, addressY, {
             width: 250
@@ -99,13 +105,10 @@ class InvoiceService {
             addressY + addressHeight + 4
         );
 
-        // ── Invoice # / Date (top-right) ─────────────────────────────────────────
-        const invInfoY = startY + 36;
+        // ── Challan # / Date (right, aligned with logo row) ─────────────────────
+        const invInfoY = belowTitleY + 6;
         const invLblX = PAGE_W - MARGIN - 200;
         const invValX = PAGE_W - MARGIN - 130;
-
-        doc.font('Helvetica-Bold').fontSize(9).fillColor(RED)
-            .text('CHALLAN', invLblX, invInfoY - 14, { width: 200, align: 'right' });
 
         doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK)
             .text('Challan NO.', invLblX, invInfoY, { width: 65, align: 'right' });
@@ -117,10 +120,16 @@ class InvoiceService {
         doc.font('Helvetica').fontSize(8)
             .text(new Date(sale.saleDate).toLocaleString('en-IN'),
                 invValX, invInfoY + 13, { width: 130, align: 'right' });
+                
 
-        const addrTop = startY + 60;
-        const divY = addrTop + 35;
+        // ── Divider (below the taller of the two columns) ───────────────────────
+        const leftColBottom = addressY + addressHeight + 4 + 16;
+        const rightColBottom = invInfoY + 13 + 10 + 16;
+        const divY = Math.max(leftColBottom, rightColBottom);
         this._hr(doc, divY, RED, 1.5);
+
+        const DIVIDER_BOTTOM_MARGIN = 16;
+        let y = divY + DIVIDER_BOTTOM_MARGIN; 
 
         // ── Customer info grid ────────────────────────────────────────────────────
         const gridTop = divY + 8;
@@ -242,12 +251,16 @@ class InvoiceService {
 
         doc.font('Helvetica').fontSize(8.5).fillColor(BLACK);
 
-        doc.font('Helvetica-Bold').text('Grand Total:', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, (sale.totalAmount || 0).toFixed(2), sumValX, rowY, 90);
+        doc.font('Helvetica-Bold').text('Total Amount:', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, ((sale.totalAmount+sale.discountAmount) || 0).toFixed(2), sumValX, rowY, 90);
         rowY += 13;
 
         doc.font('Helvetica').text('Discount Allowed:', sumLblX, rowY, { width: sumLblW });
         this._rtxt(doc, `-${(sale.discountAmount || 0).toFixed(2)}`, sumValX, rowY, 90);
+        rowY += 13;
+
+        doc.font('Helvetica-Bold').text('Grand Total:', sumLblX, rowY, { width: sumLblW });
+        this._rtxt(doc, (sale.totalAmount || 0).toFixed(2), sumValX, rowY, 90);
         rowY += 13;
 
         doc.font('Helvetica-Bold').fillColor('#10b981').text('Amount Paid:', sumLblX, rowY, { width: sumLblW });
@@ -405,23 +418,68 @@ class InvoiceService {
     // ─── PAGE 3: PDI SLIP ─────────────────────────────────────────────────────
     _buildPDISlipPage(doc, sale) {
         const pgTop = 24;
-        const COL2_X = MARGIN + CONTENT_W / 2 + 6;
-        const COL_W = CONTENT_W / 2 - 6;
+        const COL_GAP = 12;
+        const COL2_X = MARGIN + CONTENT_W / 2 + COL_GAP / 2;
+        const COL_W = CONTENT_W / 2 - COL_GAP / 2;
+        const PAGE_BOTTOM = 841.89 - MARGIN;
 
-        // ── Header Band ──────────────────────────────────────────────────────────
-        // doc.rect(MARGIN, pgTop, CONTENT_W, 38).fill(WHITE);
+        // Keeps every block from running off the page instead of silently overlapping the footer
+        const ensureSpace = (needed) => {
+            if (y + needed > PAGE_BOTTOM) {
+                doc.addPage();
+                y = MARGIN;
+            }
+        };
 
-        this._drawLogo(doc, MARGIN + 8, pgTop + 4, 90, 28);
+        let y = pgTop;
 
-        doc.font('Helvetica-Bold').fontSize(16).fillColor('RED')
-            .text('PRE-DELIVERY INSPECTION', MARGIN, pgTop + 4, { width: CONTENT_W, align: 'center' });
-        // sale number 
-        doc.font('Helvetica').fontSize(8).fillColor('rgba(255,255,255,0.85)')
-            .text(`Sale Number: ${sale?.saleNumber || 'N/A'}`, MARGIN, pgTop + 26, { width: CONTENT_W, align: 'center' });
+        // ═══════════════════════════════════════════════════
+        // HEADER BAND — logo + address on the left, title on the right
+        // (previously the title/sale-number sat at a fixed y that assumed
+        // a 1-line address; now the two sides are measured independently)
+        // ═══════════════════════════════════════════════════
+        const logoW = 90, logoH = 28;
+        this._drawLogo(doc, MARGIN, y, logoW, logoH);
 
-        // ── Sub-header pill row ───────────────────────────────────────────────────
-        let y = pgTop + 48;
+        const address = 'Address: Hero - Anant Automobiles, Front Of Indian Petrol Pump, Ahmadgarh, Uttar Pradesh 203392';
+        const addrWidth = 230;
+        const addrY = y + logoH + 6;
+
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
+            .text(address, MARGIN, addrY, { width: addrWidth, lineGap: 1 });
+        const addressHeight = doc.heightOfString(address, { width: addrWidth, lineGap: 1 });
+
+        const phoneY = addrY + addressHeight + 4;
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
+            .text('Phone Number: 8650507572', MARGIN, phoneY, { width: addrWidth });
+        const phoneHeight = doc.heightOfString('Phone Number: 8650507572', { width: addrWidth });
+
+        const leftColBottom = phoneY + phoneHeight;
+
+        // Title + sale number, right side of the header, independent of address height
+        const titleX = MARGIN + addrWidth + 16;
+        const titleW = CONTENT_W - addrWidth - 16;
+
+        doc.font('Helvetica-Bold').fontSize(16).fillColor(RED)
+            .text('PRE-DELIVERY INSPECTION', titleX, y + 6, { width: titleW, align: 'right' });
+        const titleHeight = doc.heightOfString('PRE-DELIVERY INSPECTION', {
+            width: titleW, align: 'right'
+        });
+
+        // FIX: was rgba(255,255,255,0.85) on a plain white page — invisible.
+        // Uses DARK_GRAY on white, same as the rest of the meta text.
+        const saleNumberY = y + 6 + titleHeight + 4;
+        doc.font('Helvetica').fontSize(8).fillColor(DARK_GRAY)
+            .text(`Sale Number: ${sale?.saleNumber || 'N/A'}`, titleX, saleNumberY, {
+                width: titleW, align: 'right'
+            });
+        const rightColBottom = saleNumberY + doc.heightOfString(`Sale Number: ${sale?.saleNumber || 'N/A'}`, { width: titleW });
+
+        y = Math.max(leftColBottom, rightColBottom, y + logoH) + 10;
+
+        // ── Sub-header pill row (REF / DATE / GENERATED) ───────────────────────────
         const pillH = 18;
+        ensureSpace(pillH + 12);
         doc.roundedRect(MARGIN, y, CONTENT_W, pillH, 4).fill('#F5F5F5');
 
         const refText = `REF: ${sale.id?.slice(0, 8).toUpperCase() || 'N/A'}`;
@@ -429,32 +487,38 @@ class InvoiceService {
         const genText = `GENERATED: ${new Date().toLocaleString('en-IN')}`;
 
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
-            .text(refText, MARGIN + 8, y + 5)
-            .text(dateText, MARGIN + CONTENT_W / 2 - 30, y + 5)
-            .text(genText, PAGE_W - MARGIN - 140, y + 5, { width: 140, align: 'right' });
+            .text(refText, MARGIN + 8, y + 5, { width: CONTENT_W / 3, lineBreak: false })
+            .text(dateText, MARGIN + CONTENT_W / 3, y + 5, { width: CONTENT_W / 3, align: 'center', lineBreak: false })
+            .text(genText, PAGE_W - MARGIN - 160, y + 5, { width: 160, align: 'right', lineBreak: false });
 
         y += pillH + 12;
 
-        // ── SECTION HEADER helper ─────────────────────────────────────────────────
-        const sectionHeader = (title, yPos) => {
-            doc.rect(MARGIN, yPos, CONTENT_W, 16).fill('#FFFFFF');
+        // ── SECTION HEADER helper ───────────────────────────────────────────────────
+        // FIX: was filling a white rect and writing white text on it (invisible).
+        // Now a dark band with white text, matching the vehicle-card style used below.
+        const sectionHeaderH = 16;
+        const sectionHeader = (title) => {
+            ensureSpace(sectionHeaderH + 8);
+            doc.rect(MARGIN, y, CONTENT_W, sectionHeaderH).fill('#1A1A2E');
             doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF')
-                .text(title, MARGIN + 8, yPos + 4);
-            return yPos + 22;
+                .text(title, MARGIN + 8, y + 4);
+            y += sectionHeaderH + 8;
         };
 
-        // ── KEY-VALUE helper ──────────────────────────────────────────────────────
+        // ── KEY-VALUE helper — returns the height it actually used ────────────────
         const kv = (label, value, x, yPos, w) => {
             doc.font('Helvetica-Bold').fontSize(7.5).fillColor(DARK_GRAY)
                 .text(label.toUpperCase(), x, yPos, { width: 72 });
+            const valueW = w - 80;
             doc.font('Helvetica').fontSize(8.5).fillColor(BLACK)
-                .text(value || '—', x + 76, yPos, { width: w - 80 });
+                .text(value || '—', x + 76, yPos, { width: valueW });
+            return doc.heightOfString(value || '—', { width: valueW });
         };
 
         // ═══════════════════════════════════════════════════
-        // SECTION 1: CUSTOMER DETAILS  (two-column layout)
+        // SECTION 1: CUSTOMER DETAILS (two-column, dynamic row height)
         // ═══════════════════════════════════════════════════
-        y = sectionHeader('CUSTOMER DETAILS', y);
+        sectionHeader('CUSTOMER DETAILS');
 
         const addr = [
             sale.customer?.address?.addressLine1,
@@ -464,33 +528,38 @@ class InvoiceService {
             sale.customer?.address?.country,
         ].filter(Boolean).join(', ');
 
-        // Left column
-        kv('Name', sale.customer?.name || '', MARGIN, y, COL_W);
-        kv('Phone', formatPhone(sale.customer?.phone), MARGIN, y + 14, COL_W);
-
-        // Right column
+        const nameH = kv('Name', sale.customer?.name || '', MARGIN, y, COL_W);
+        // Address on the right can wrap to multiple lines — measure it first so
+        // the phone row below never starts before the address block ends.
+        const addrH = doc.heightOfString(addr || '—', { width: COL_W - 80 });
         kv('Address', addr, COL2_X, y, COL_W);
 
-        y += 30;
+        const phoneRowY = y + Math.max(nameH, 12) + 6;
+        const phoneH = kv('Phone', formatPhone(sale.customer?.phone), MARGIN, phoneRowY, COL_W);
+
+        y = Math.max(phoneRowY + phoneH, y + addrH) + 10;
         this._hr(doc, y, '#E0E0E0', 0.5);
         y += 10;
 
         // ═══════════════════════════════════════════════════
-        // SECTION 2: VEHICLE DETAILS  (per-bike card)
+        // SECTION 2: VEHICLE DETAILS (per-bike card, dynamic header height)
         // ═══════════════════════════════════════════════════
-        y = sectionHeader('VEHICLE DETAILS', y);
+        sectionHeader('VEHICLE DETAILS');
 
         const bikeItems = (sale.items || []).filter(it => it.itemType === 'BIKE' && it.SaleItemStatus == 'SOLD');
 
         bikeItems.forEach((item, idx) => {
-            // Vehicle card header
-            doc.rect(MARGIN, y, CONTENT_W, 14).fill('#F0F0F5');
-            doc.font('Helvetica-Bold').fontSize(8).fillColor('#1A1A2E')
-                .text(`VEHICLE #${idx + 1}  —  ${item.model?.brand || ''} ${item.model?.name || ''}  |  Color: ${item.color || 'Any'}`,
-                    MARGIN + 8, y + 3);
-            y += 20;
+            const cardTitle = `VEHICLE #${idx + 1}  —  ${item.model?.brand || ''} ${item.model?.name || ''}  |  Color: ${item.color || 'Any'}`;
+            const cardTitleH = doc.heightOfString(cardTitle, { width: CONTENT_W - 16 });
+            const cardHeaderH = Math.max(14, cardTitleH + 6);
 
-            // Two-column grid of fields
+            ensureSpace(cardHeaderH + 4 * 16 + 8);
+
+            doc.rect(MARGIN, y, CONTENT_W, cardHeaderH).fill('#F0F0F5');
+            doc.font('Helvetica-Bold').fontSize(8).fillColor('#1A1A2E')
+                .text(cardTitle, MARGIN + 8, y + 3, { width: CONTENT_W - 16 });
+            y += cardHeaderH + 6;
+
             const leftFields = [
                 ['Engine #', '___________________________'],
                 ['Chassis #', '___________________________'],
@@ -504,16 +573,15 @@ class InvoiceService {
                 ['Odometer', '___________________________'],
             ];
 
-            const rowH = 16;
+            const rowH = 16; // placeholder underscores never wrap, fixed row height is safe here
             leftFields.forEach((f, i) => {
-                // Alternate row tint
+                ensureSpace(rowH);
                 if (i % 2 === 0) {
                     doc.rect(MARGIN, y, CONTENT_W, rowH).fill('#FAFAFA');
                 }
                 kv(f[0], f[1], MARGIN + 6, y + 3, COL_W - 6);
                 kv(rightFields[i][0], rightFields[i][1], COL2_X, y + 3, COL_W);
 
-                // Center divider
                 doc.moveTo(COL2_X - 6, y).lineTo(COL2_X - 6, y + rowH)
                     .strokeColor('#E0E0E0').lineWidth(0.5).stroke();
 
@@ -527,9 +595,9 @@ class InvoiceService {
         y += 10;
 
         // ═══════════════════════════════════════════════════
-        // SECTION 3: PDI CHECKLIST  (two-column grid)
+        // SECTION 3: PDI CHECKLIST (two-column, per-row dynamic height)
         // ═══════════════════════════════════════════════════
-        y = sectionHeader('PDI CHECKLIST', y);
+        sectionHeader('PDI CHECKLIST');
 
         const checks = [
             'Battery Voltage Checked & Charged',
@@ -544,62 +612,72 @@ class InvoiceService {
             '5 Photos of Vehicle Taken',
         ];
 
-        const checkRowH = 17;
-        checks.forEach((check, i) => {
-            const col = i % 2;
-            const row = Math.floor(i / 2);
-            const cx = col === 0 ? MARGIN + 6 : COL2_X;
-            const cy = y + row * checkRowH;
+        const checkTextW = COL_W - 14;
+        for (let row = 0; row < Math.ceil(checks.length / 2); row++) {
+            const leftText = checks[row * 2];
+            const rightText = checks[row * 2 + 1];
 
-            // Alternate row tint (full-width, only on left column to avoid double draw)
-            if (col === 0 && row % 2 === 0) {
-                doc.rect(MARGIN, cy, CONTENT_W, checkRowH).fill('#FAFAFA');
+            const leftH = doc.heightOfString(leftText, { width: checkTextW });
+            const rightH = rightText ? doc.heightOfString(rightText, { width: checkTextW }) : 0;
+            const rowH = Math.max(leftH, rightH, 9) + 10; // +10 padding so text never touches the row edge
+
+            ensureSpace(rowH);
+
+            if (row % 2 === 0) {
+                doc.rect(MARGIN, y, CONTENT_W, rowH).fill('#FAFAFA');
             }
 
-            // Checkbox
-            doc.roundedRect(cx + 1, cy + 4, 9, 9, 1.5)
+            doc.roundedRect(MARGIN + 7, y + 4, 9, 9, 1.5)
                 .strokeColor(RED).lineWidth(1).stroke();
-
             doc.font('Helvetica').fontSize(8).fillColor(BLACK)
-                .text(check, cx + 14, cy + 5, { width: COL_W - 14 });
-        });
+                .text(leftText, MARGIN + 20, y + 5, { width: checkTextW });
 
-        y += Math.ceil(checks.length / 2) * checkRowH + 12;
+            if (rightText) {
+                doc.roundedRect(COL2_X + 1, y + 4, 9, 9, 1.5)
+                    .strokeColor(RED).lineWidth(1).stroke();
+                doc.font('Helvetica').fontSize(8).fillColor(BLACK)
+                    .text(rightText, COL2_X + 14, y + 5, { width: checkTextW });
+            }
 
+            y += rowH;
+        }
+
+        y += 4;
         this._hr(doc, y, '#E0E0E0', 0.5);
         y += 12;
 
         // ═══════════════════════════════════════════════════
-        // SECTION 4: REMARKS  (short text box)
+        // SECTION 4: REMARKS
         // ═══════════════════════════════════════════════════
-        y = sectionHeader('REMARKS / NOTES', y);
+        const remarksBoxH = 32;
+        ensureSpace(remarksBoxH + 10);
+        sectionHeader('REMARKS / NOTES');
 
-        doc.rect(MARGIN, y, CONTENT_W, 32).strokeColor('#D0D0D0').lineWidth(0.5).stroke();
+        doc.rect(MARGIN, y, CONTENT_W, remarksBoxH).strokeColor('#D0D0D0').lineWidth(0.5).stroke();
         doc.font('Helvetica').fontSize(7.5).fillColor('#AAAAAA')
             .text('Enter any remarks or notes here...', MARGIN + 8, y + 11);
 
-        y += 42;
+        y += remarksBoxH + 10;
 
         // ═══════════════════════════════════════════════════
-        // SECTION 5: SIGNATURES  (three boxes)
+        // SECTION 5: SIGNATURES
         // ═══════════════════════════════════════════════════
         const sigBoxW = (CONTENT_W - 16) / 3;
         const sigBoxH = 42;
         const sigLabels = ['PDI Engineer', "Supervisor's Approval", "Customer's Acknowledgment"];
 
+        ensureSpace(sigBoxH + 22); // signatures + footer bar together, so they don't get split across a page break
+
         sigLabels.forEach((lbl, i) => {
             const sx = MARGIN + i * (sigBoxW + 8);
 
-            // Box
             doc.rect(sx, y, sigBoxW, sigBoxH)
                 .strokeColor('#CCCCCC').lineWidth(0.5).stroke();
 
-            // Signature line inside box
             doc.moveTo(sx + 8, y + sigBoxH - 14)
                 .lineTo(sx + sigBoxW - 8, y + sigBoxH - 14)
                 .strokeColor('#CCCCCC').lineWidth(0.5).stroke();
 
-            // Label strip at bottom
             doc.rect(sx, y + sigBoxH - 12, sigBoxW, 12).fill('#F5F5F5');
             doc.font('Helvetica-Bold').fontSize(6.5).fillColor(DARK_GRAY)
                 .text(lbl.toUpperCase(), sx, y + sigBoxH - 9, { width: sigBoxW, align: 'center' });
