@@ -447,6 +447,9 @@ class SalesService {
             },
           },
         },
+        orderBy : {
+          createdAt: 'desc'
+        }
       });
 
       return sales;
