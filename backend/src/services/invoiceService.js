@@ -12,6 +12,12 @@ const DARK_GRAY = '#444444';
 const LIGHT_GRAY = '#f2f2f2';
 const MID_GRAY = '#cccccc';
 
+// Devanagari faces, needed for the Hindi customer satisfaction certificate --
+// the built-in Helvetica has no Devanagari glyphs. Mukta is used rather than Noto
+// Sans Devanagari because fontkit 2.x crashes shaping Noto's GPOS anchor tables.
+const HINDI_FONT_REGULAR = path.join(__dirname, '../../public/fonts/Mukta-Regular.ttf');
+const HINDI_FONT_BOLD = path.join(__dirname, '../../public/fonts/Mukta-Bold.ttf');
+
 
 const COL = {
     sno: MARGIN,
@@ -50,6 +56,24 @@ class InvoiceService {
     /** Right-aligned text whose right edge is at x */
     _rtxt(doc, text, x, y, width = 65) {
         doc.text(String(text), x - width, y, { width, align: 'right' });
+    }
+
+    /**
+     * Registers the Devanagari faces on this document and returns the font names
+     * to use. Falls back to Helvetica if the TTFs are missing so PDF generation
+     * never hard-fails on a deployment without them.
+     */
+    _registerHindiFonts(doc) {
+        const hasRegular = fs.existsSync(HINDI_FONT_REGULAR);
+        const hasBold = fs.existsSync(HINDI_FONT_BOLD);
+
+        if (hasRegular) doc.registerFont('Hindi', HINDI_FONT_REGULAR);
+        if (hasBold) doc.registerFont('Hindi-Bold', HINDI_FONT_BOLD);
+
+        return {
+            regular: hasRegular ? 'Hindi' : 'Helvetica',
+            bold: hasBold ? 'Hindi-Bold' : (hasRegular ? 'Hindi' : 'Helvetica-Bold'),
+        };
     }
 
     _drawLogo(doc, x, y, w = 130, h = 40) {
@@ -182,22 +206,38 @@ class InvoiceService {
 
         this._hr(doc, gy + 4, MID_GRAY);
 
-        // ── Items table header (Includes Status Column) ───────────────────────────
+        // ── Items table header ───────────────────────────────────────────────────
+        // Only ex-showroom values are printed here. Any discount on the sale is
+        // deliberately kept off the customer copy.
+        const ITEM_COL = {
+            sno:     { x: MARGIN,          w: 22 },
+            desc:    { x: MARGIN + 22,     w: 130 },
+            engine:  { x: MARGIN + 152,    w: 82 },
+            chassis: { x: MARGIN + 234,    w: 88 },
+            status:  { x: MARGIN + 322,    w: 58 },
+            qty:     { end: MARGIN + 400,  w: 20 },
+            price:   { end: MARGIN + 460,  w: 58 },
+            amount:  { end: PAGE_W - MARGIN, w: 55 },
+        };
+
         const tblHdrY = gy + 10;
         doc.fillColor(LIGHT_GRAY).rect(MARGIN, tblHdrY - 2, CONTENT_W, 14).fill();
 
         doc.font('Helvetica-Bold').fontSize(8).fillColor(BLACK);
-        doc.text('S.No', MARGIN, tblHdrY, { width: 25 });
-        doc.text('Description & Accessories', MARGIN + 30, tblHdrY, { width: 170 });
-        doc.text('Engine No.', MARGIN + 210, tblHdrY, { width: 95 });
-        doc.text('Chassis No.', MARGIN + 315, tblHdrY, { width: 95 });
-        doc.text('Status', MARGIN + 420, tblHdrY, { width: 70 });
-        this._rtxt(doc, 'Qty', PAGE_W - MARGIN, tblHdrY, 25);
+        doc.text('S.No', ITEM_COL.sno.x, tblHdrY, { width: ITEM_COL.sno.w, lineBreak: false });
+        doc.text('Description', ITEM_COL.desc.x, tblHdrY, { width: ITEM_COL.desc.w, lineBreak: false });
+        doc.text('Engine No.', ITEM_COL.engine.x, tblHdrY, { width: ITEM_COL.engine.w, lineBreak: false });
+        doc.text('Chassis No.', ITEM_COL.chassis.x, tblHdrY, { width: ITEM_COL.chassis.w, lineBreak: false });
+        doc.text('Status', ITEM_COL.status.x, tblHdrY, { width: ITEM_COL.status.w, lineBreak: false });
+        this._rtxt(doc, 'Qty', ITEM_COL.qty.end, tblHdrY, ITEM_COL.qty.w);
+        this._rtxt(doc, 'Ex-Showroom', ITEM_COL.price.end, tblHdrY, ITEM_COL.price.w);
+        this._rtxt(doc, 'Amount', ITEM_COL.amount.end, tblHdrY, ITEM_COL.amount.w);
 
         this._hr(doc, tblHdrY + 14, MID_GRAY);
 
         // ── Items rows (With Dynamic Heights & Conditional Color Tracking) ────────
         let rowY = tblHdrY + 18;
+        let grandTotal = 0;
 
         sale.items.forEach((item, idx) => {
             const isBike = item.itemType === 'BIKE';
@@ -205,14 +245,20 @@ class InvoiceService {
                 ? `${item.model?.brand || ''} ${item.model?.name || ''} (${item.color || 'Any'})`.trim()
                 : item.accessory?.name || '';
 
-            const engine = item.bike?.engineNumber || (isBike ? '— (PDI)' : '—');
-            const chassis = item.bike?.chassisNumber || (isBike ? '— (PDI)' : '—');
+            const engine = item.bike?.engineNumber || (isBike ? '\u2014 (PDI)' : '\u2014');
+            const chassis = item.bike?.chassisNumber || (isBike ? '\u2014 (PDI)' : '\u2014');
             const itemStatus = item.SaleItemStatus || 'SOLD';
 
+            const quantity = item.quantity || 1;
+            const exShowroomPrice = item.unitPrice || 0;   // pre-discount, as printed
+            const lineAmount = exShowroomPrice * quantity;
+
+            // Items replaced through an exchange stay visible but no longer count
+            if (itemStatus !== 'EXCHANGED') grandTotal += lineAmount;
+
             // Calculate height metrics dynamically
-            const textWidth = 170;
             doc.font('Helvetica').fontSize(8);
-            const textHeight = doc.heightOfString(modelName, { width: textWidth });
+            const textHeight = doc.heightOfString(modelName, { width: ITEM_COL.desc.w });
 
             const padding = 6;
             const rowHeight = Math.max(14, textHeight + padding);
@@ -226,53 +272,46 @@ class InvoiceService {
 
             // Draw data rows
             doc.fillColor(itemStatus === 'EXCHANGED' ? '#b91c1c' : BLACK);
-            doc.text(`${idx + 1}`, MARGIN, rowY, { width: 25 });
-            doc.text(modelName, MARGIN + 30, rowY, { width: textWidth });
-            doc.text(engine, MARGIN + 210, rowY, { width: 95 });
-            doc.text(chassis, MARGIN + 315, rowY, { width: 95 });
+            doc.text(`${idx + 1}`, ITEM_COL.sno.x, rowY, { width: ITEM_COL.sno.w });
+            doc.text(modelName, ITEM_COL.desc.x, rowY, { width: ITEM_COL.desc.w });
+            doc.text(engine, ITEM_COL.engine.x, rowY, { width: ITEM_COL.engine.w });
+            doc.text(chassis, ITEM_COL.chassis.x, rowY, { width: ITEM_COL.chassis.w });
 
             // Render Status Text bolded
             doc.font('Helvetica-Bold');
-            doc.text(itemStatus, MARGIN + 420, rowY, { width: 70 });
+            doc.text(itemStatus, ITEM_COL.status.x, rowY, { width: ITEM_COL.status.w });
             doc.font('Helvetica');
 
-            this._rtxt(doc, String(item.quantity || 1), PAGE_W - MARGIN, rowY, 25);
+            this._rtxt(doc, String(quantity), ITEM_COL.qty.end, rowY, ITEM_COL.qty.w);
+            this._rtxt(doc, exShowroomPrice.toFixed(2), ITEM_COL.price.end, rowY, ITEM_COL.price.w);
+            this._rtxt(doc, lineAmount.toFixed(2), ITEM_COL.amount.end, rowY, ITEM_COL.amount.w);
 
             rowY += rowHeight;
         });
 
         this._hr(doc, rowY, MID_GRAY);
-        rowY += 8;
+        rowY += 10;
 
-        // ── Summary Financial Block ───────────────────────────────────────────────
+        // ── Summary Financial Block (ex-showroom figures only) ───────────────────
         const sumLblX = PAGE_W - MARGIN - 220;
         const sumValX = PAGE_W - MARGIN;
         const sumLblW = 120;
 
-        doc.font('Helvetica').fontSize(8.5).fillColor(BLACK);
-
-        doc.font('Helvetica-Bold').text('Total Amount:', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, ((sale.totalAmount+sale.discountAmount) || 0).toFixed(2), sumValX, rowY, 90);
-        rowY += 13;
-
-        doc.font('Helvetica').text('Discount Allowed:', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, `-${(sale.discountAmount || 0).toFixed(2)}`, sumValX, rowY, 90);
-        rowY += 13;
-
-        doc.font('Helvetica-Bold').text('Grand Total:', sumLblX, rowY, { width: sumLblW });
-        this._rtxt(doc, (sale.totalAmount || 0).toFixed(2), sumValX, rowY, 90);
-        rowY += 13;
-
-        doc.font('Helvetica-Bold').fillColor('#10b981').text('Amount Paid:', sumLblX, rowY, { width: sumLblW });
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#10b981')
+            .text('Amount Paid:', sumLblX, rowY, { width: sumLblW });
         this._rtxt(doc, (sale.paidAmount || 0).toFixed(2), sumValX, rowY, 90);
-        rowY += 13;
+        rowY += 16;
 
-        // doc.font('Helvetica-Bold').fillColor('#f59e0b').text('Pending Balance:', sumLblX, rowY, { width: sumLblW });
-        // this._rtxt(doc, (sale.pendingAmount || 0).toFixed(2), sumValX, rowY, 90);
-        // rowY += 16;
+        // Grand Total closes out the challan, below every other figure
+        doc.save().fillColor(LIGHT_GRAY)
+            .rect(sumLblX - 8, rowY - 4, sumValX - sumLblX + 8, 20).fill().restore();
 
+        doc.font('Helvetica-Bold').fontSize(10).fillColor(BLACK)
+            .text('GRAND TOTAL:', sumLblX, rowY + 2, { width: sumLblW });
+        this._rtxt(doc, grandTotal.toFixed(2), sumValX, rowY + 2, 90);
+        rowY += 24;
 
-        return rowY + 25;
+        return rowY + 20;
     }
 
     // ─── PAGE 1: GATE PASS (FIXED TO BOTTOM OF PAGE) ──────────────────────────
@@ -692,6 +731,52 @@ class InvoiceService {
                 MARGIN, y + 3, { width: CONTENT_W, align: 'center' });
     }
 
+    // ─── PDI SLIP — PAGE 2: CUSTOMER SATISFACTION CERTIFICATE ─────────────
+    _buildCustomerSatisfactionPage(doc) {
+        const fonts = this._registerHindiFonts(doc);
+
+        let y = 30;
+        this._drawLogo(doc, MARGIN, y, 90, 28);
+
+        const title = 'ग्राहक संतुष्टि प्रमाण पत्र';
+        doc.font(fonts.bold).fontSize(17).fillColor(RED)
+            .text(title, MARGIN, y + 40, { width: CONTENT_W, align: 'center' });
+
+        y = doc.y + 8;
+        this._hr(doc, y, RED, 1.5);
+        y += 18;
+
+        // Writes one block and advances the cursor using PDFKit's own text metrics
+        const block = (text, font, size, gap = 6, options = {}) => {
+            doc.font(font).fontSize(size).fillColor(BLACK)
+                .text(text, MARGIN, y, { width: CONTENT_W, lineGap: 4, ...options });
+            y = doc.y + gap;
+        };
+
+        block('सेवा में,', fonts.regular, 12, 2);
+        block('अनंत ऑटोमोबाइल्स', fonts.bold, 13, 2);
+        block('अहमदगढ़ (बुलंदशहर)', fonts.regular, 12, 14);
+        block('महोदय,', fonts.regular, 12, 12);
+
+        const paragraphs = [
+            'आज दिनांक ............................ में मेने मॉडल न0 .................................... और चेसिस न०.................................... हीरो बाइक क्रय की है, हमने उपरोक्त वाहन चलाने और देखने के बाद में पूरी तरह से संतुष्ट हूँ, अत: भविष्य में मेरे द्वारा हीरो बाइक लौटाने के सभी दावों को अस्वीकार किया जाये! में इससे पूर्णत: सहमत हूँ तथा शोरूम के द्वारा दी गयी कैश या फाइनेंस की सभी जानकारी और मेरे द्वारा हीरो बाइक के दिए गए भुगतान से पूर्णतः सहमत हूँ ! हमने शोरूम से हीरो बाइक और कंपनी का हेलमेट लिया ...... है अथवा नहीं...... लिया है जिसका इनवॉइस न० ..................................... है !',
+            'और आपको दीया हुआ मोबाइल न० मेरे आधार कार्ड से लिंक है और इसकी पूर्णतः जिम्मेदारी मेरी होगी,',
+            'यदि किसी कारणवश मेरी हीरो बाइक का रजिस्ट्रेशन नहीं हो पाया तो में स्वयं उसका जिम्मेदार हूँगा !',
+        ];
+
+        paragraphs.forEach((paragraph) => block(paragraph, fonts.regular, 11.5, 14, { align: 'justify' }));
+
+        block('धन्यवाद', fonts.regular, 12, 30);
+
+        [
+            'ग्राहक का नाम .........................',
+            'पता .....................................',
+            'मोबाइल न० ............................',
+        ].forEach((field) => block(field, fonts.regular, 12, 16));
+
+        block('ह०', fonts.regular, 12, 0);
+    }
+
     generatePDISlipPDF(sale, filePath) {
         return new Promise((resolve, reject) => {
             try {
@@ -700,6 +785,10 @@ class InvoiceService {
                 doc.pipe(stream);
 
                 this._buildPDISlipPage(doc, sale);
+
+                // Customer satisfaction certificate goes on its own page at the end
+                doc.addPage();
+                this._buildCustomerSatisfactionPage(doc);
 
                 doc.end();
                 stream.on('finish', resolve);

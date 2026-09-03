@@ -160,7 +160,11 @@ export default function BikesPage() {
   };
 
   const openCreate = () => { navigate('/purchases/new'); };
-  const openEdit   = (row) => { setForm({ ...row, modelId: row.modelId }); setErrors({}); setModal({ id: row.id, title: 'Edit Bike' }); };
+  const openEdit   = (row) => {
+    // A sold bike is locked - its details are already on the customer's challan
+    if (row.status === 'SOLD') { toast.error('This bike has been sold and can no longer be edited'); return; }
+    setForm({ ...row, modelId: row.modelId }); setErrors({}); setModal({ id: row.id, title: 'Edit Bike' });
+  };
 
   // Group filtered results by model
   const grouped = filtered.reduce((acc, b) => {
@@ -225,6 +229,7 @@ export default function BikesPage() {
                   cols={cols}
                   rows={items}
                   onEdit={openEdit}
+                  canEdit={row => row.status !== 'SOLD'}
                   onDelete={row => setConfirm(row)}
                   style={{ borderRadius: '0 0 6px 6px' }}
                   extraActions={row => (

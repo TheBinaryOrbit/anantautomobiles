@@ -1,22 +1,91 @@
-const crypto = require('crypto');
 const prisma = require('../config/db');
 const invoiceService = require('./invoiceService');
 
+// Challan numbers must follow the physical challan book, which starts at 2199.
+const CHALLAN_COUNTER_ID = 'CHALLAN_NUMBER';
+const CHALLAN_START_NUMBER = 2199;
+
+const EDITABLE_PAYMENT_TYPES = [
+  'FULL_PAYMENT',
+  'PARTIAL_PAYMENT_AND_PENDING',
+  'PARTIAL_PAYMENT_AND_PENDING_AND_FINANCE',
+  'DOWN_PAYMENT_AND_FINANCE',
+  'FULL_FINANCE',
+  'OTHER',
+];
+
+const EDITABLE_PAYMENT_METHODS = [
+  'CASH',
+  'CREDIT_CARD',
+  'DEBIT_CARD',
+  'UPI',
+  'CHEQUE',
+  'NET_BANKING',
+  'FINANCE',
+  'OTHER',
+];
+
+const SALE_INCLUDE = {
+  customer: { include: { address: true } },
+  exchange: true,
+  items: {
+    include: {
+      bike: { include: { model: true } },
+      model: true,
+      accessory: true,
+    },
+  },
+};
+
 class SalesService {
-  async generateSaleNumber() {
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const candidate = String(crypto.randomInt(1000000000, 10000000000));
-      const existingSale = await prisma.sale.findFirst({
+  /**
+   * Seeds the challan counter at (start - 1) so the very first increment hands
+   * out CHALLAN_START_NUMBER itself. Runs on the base client on purpose: the row
+   * should survive even if the surrounding sale transaction rolls back.
+   */
+  async ensureChallanCounter() {
+    const existing = await prisma.counter.findUnique({ where: { id: CHALLAN_COUNTER_ID } });
+    if (existing) return existing;
+
+    try {
+      return await prisma.counter.create({
+        data: { id: CHALLAN_COUNTER_ID, value: CHALLAN_START_NUMBER - 1 },
+      });
+    } catch (error) {
+      // Another request seeded it first
+      if (error.code === 'P2002') {
+        return prisma.counter.findUnique({ where: { id: CHALLAN_COUNTER_ID } });
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Hands out the next challan number in sequence. `client` may be a transaction
+   * client so the number is rolled back with the sale it was reserved for.
+   */
+  async generateSaleNumber(client = prisma) {
+    await this.ensureChallanCounter();
+
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const counter = await client.counter.update({
+        where: { id: CHALLAN_COUNTER_ID },
+        data: { value: { increment: 1 } },
+      });
+
+      const candidate = String(Math.max(counter.value, CHALLAN_START_NUMBER));
+      const existingSale = await client.sale.findFirst({
         where: { saleNumber: candidate },
         select: { id: true },
       });
 
+      // Skip over numbers already used by sales created before the sequence existed
       if (!existingSale) {
         return candidate;
       }
     }
 
-    throw new Error('Unable to generate a unique sale number');
+    throw new Error('Unable to generate a unique challan number');
   }
 
   validateSalesData(data) {
@@ -304,12 +373,11 @@ class SalesService {
 
       const isPDI = saleItemsData.some(it => it.itemType === 'BIKE' && !it.bikeId);
       const status = isPDI ? 'PDI' : (pendingAmount === 0 ? 'CONFIRMED' : 'PENDING');
-      const saleNumber = await this.generateSaleNumber();
-
-      console.log(saleData);
 
       // Wrapped execution inside transaction blocks to couple sale creation & exchange validation securely
       const resultSale = await prisma.$transaction(async (tx) => {
+        // Reserved inside the transaction so a failed sale does not burn a challan number
+        const saleNumber = await this.generateSaleNumber(tx);
 
         const sale = await tx.sale.create({
           data: {
@@ -562,6 +630,196 @@ async getSale(id) {
       }
       throw error;
     }
+  }
+
+  /**
+   * A booked sale can only be corrected, never restructured: amounts, customer
+   * details, nominee, finance details and payment mode are editable, sale items
+   * are not.
+   */
+  validateSaleUpdate(data) {
+    const errors = [];
+
+    if (data.paymentType !== undefined && !EDITABLE_PAYMENT_TYPES.includes(data.paymentType)) {
+      errors.push({
+        field: 'paymentType',
+        message: `Payment Type must be one of: ${EDITABLE_PAYMENT_TYPES.join(', ')}`,
+      });
+    }
+
+    if (data.paymentMethod !== undefined && !EDITABLE_PAYMENT_METHODS.includes(data.paymentMethod)) {
+      errors.push({
+        field: 'paymentMethod',
+        message: `Payment Method must be one of: ${EDITABLE_PAYMENT_METHODS.join(', ')}`,
+      });
+    }
+
+    ['paidAmount', 'pendingAmount', 'disbursementAmount'].forEach((field) => {
+      if (data[field] === undefined || data[field] === null || data[field] === '') return;
+      const value = Number(data[field]);
+      if (Number.isNaN(value) || value < 0) {
+        errors.push({ field, message: `${field} must be a non-negative number` });
+      }
+    });
+
+    if (data.nomineeAge !== undefined && data.nomineeAge !== null && data.nomineeAge !== '') {
+      const age = Number(data.nomineeAge);
+      if (Number.isNaN(age) || age < 0) {
+        errors.push({ field: 'nomineeAge', message: 'Nominee Age must be a non-negative number' });
+      }
+    }
+
+    if (data.customer) {
+      if (data.customer.name !== undefined && String(data.customer.name).trim() === '') {
+        errors.push({ field: 'customer.name', message: 'Customer Name cannot be empty' });
+      }
+      if (data.customer.phone !== undefined && String(data.customer.phone).replace(/\D/g, '').length < 10) {
+        errors.push({ field: 'customer.phone', message: 'Customer Phone must be at least 10 digits' });
+      }
+    }
+
+    return errors;
+  }
+
+  async updateSale(id, updateData) {
+    const validationErrors = this.validateSaleUpdate(updateData);
+    if (validationErrors.length > 0) {
+      throw { validationErrors, message: 'Validation failed' };
+    }
+
+    const existingSale = await prisma.sale.findUnique({ where: { id } });
+
+    if (!existingSale || existingSale.isDeleted) {
+      throw { message: 'Sale not found', statusCode: 404 };
+    }
+
+    const nullableString = (v) => (v === null || String(v).trim() === '' ? null : String(v).trim());
+    const nullableNumber = (v) => (v === null || v === '' ? null : Number(v));
+
+    const data = {};
+    const setIfPresent = (field, transform = (v) => v) => {
+      if (updateData[field] !== undefined) data[field] = transform(updateData[field]);
+    };
+
+    setIfPresent('paymentType');
+    setIfPresent('paymentMethod');
+    setIfPresent('financeCompany', nullableString);
+    setIfPresent('financeExecutiveName', nullableString);
+    setIfPresent('financeExecutivePhone', nullableString);
+    setIfPresent('disbursementAmount', nullableNumber);
+    setIfPresent('nomineeName', nullableString);
+    setIfPresent('nomineeRelation', nullableString);
+    setIfPresent('nomineeAge', (v) => (v === null || v === '' ? null : parseInt(v, 10)));
+    setIfPresent('notes', nullableString);
+
+    if (updateData.paidAmount !== undefined || updateData.pendingAmount !== undefined) {
+      const totalAmount = existingSale.totalAmount;
+      const paidAmount = updateData.paidAmount !== undefined
+        ? Number(updateData.paidAmount)
+        : existingSale.paidAmount;
+      const pendingAmount = updateData.pendingAmount !== undefined
+        ? Number(updateData.pendingAmount)
+        : Math.max(0, totalAmount - paidAmount);
+
+      if (pendingAmount > totalAmount) {
+        throw { field: 'pendingAmount', message: 'Pending Amount cannot exceed the sale total' };
+      }
+
+      data.paidAmount = Math.max(0, paidAmount);
+      data.pendingAmount = Math.max(0, pendingAmount);
+      data.isPaid = data.pendingAmount === 0;
+
+      // Only the payment-driven statuses are recalculated; PDI / CANCELLED / EXCHANGED stay as they are
+      if (['PENDING', 'CONFIRMED'].includes(existingSale.status)) {
+        data.status = data.isPaid ? 'CONFIRMED' : 'PENDING';
+      }
+    }
+
+    // Re-point the sale at a different customer record
+    if (updateData.customerId && updateData.customerId !== existingSale.customerId) {
+      const customer = await prisma.customer.findUnique({ where: { id: updateData.customerId } });
+      if (!customer || customer.isDeleted) {
+        throw { field: 'customerId', message: 'Customer not found' };
+      }
+      data.customerId = updateData.customerId;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Correct the details of the customer this sale is billed to
+        if (updateData.customer) {
+          const customerId = data.customerId || existingSale.customerId;
+          const incoming = updateData.customer;
+          const customerData = {};
+
+          if (incoming.name !== undefined) customerData.name = String(incoming.name).trim();
+          if (incoming.phone !== undefined) customerData.phone = String(incoming.phone).trim();
+          if (incoming.aadhaarNumber !== undefined) customerData.aadhaarNumber = nullableString(incoming.aadhaarNumber);
+          if (incoming.panNumber !== undefined) customerData.panNumber = nullableString(incoming.panNumber);
+          if (incoming.dob !== undefined) customerData.dob = incoming.dob ? new Date(incoming.dob) : null;
+          if (incoming.marriageAnniversary !== undefined) {
+            customerData.marriageAnniversary = incoming.marriageAnniversary ? new Date(incoming.marriageAnniversary) : null;
+          }
+
+          if (Object.keys(customerData).length > 0) {
+            await tx.customer.update({ where: { id: customerId }, data: customerData });
+          }
+
+          if (incoming.address) {
+            const target = await tx.customer.findUnique({
+              where: { id: customerId },
+              select: { addressId: true },
+            });
+
+            const addressData = {};
+            ['addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country'].forEach((field) => {
+              if (incoming.address[field] !== undefined) addressData[field] = incoming.address[field];
+            });
+
+            if (target && Object.keys(addressData).length > 0) {
+              await tx.address.update({ where: { id: target.addressId }, data: addressData });
+            }
+          }
+        }
+
+        if (Object.keys(data).length > 0) {
+          await tx.sale.update({ where: { id }, data });
+        }
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        const field = error.meta?.target?.[0] || 'value';
+        throw { field, message: `Another record with this ${field} already exists` };
+      }
+      if (error.code === 'P2025') {
+        throw { message: 'Sale not found', statusCode: 404 };
+      }
+      throw error;
+    }
+
+    // Every editable field is printed on the challan, so it has to be rebuilt
+    return this.regenerateInvoice(id);
+  }
+
+  /** Rebuilds the challan PDF from the current sale record, replacing the old file. */
+  async regenerateInvoice(id) {
+    const sale = await prisma.sale.findUnique({ where: { id }, include: SALE_INCLUDE });
+
+    if (!sale) {
+      throw { message: 'Sale not found', statusCode: 404 };
+    }
+
+    if (sale.invoiceUrl) {
+      await invoiceService.deleteInvoice(sale.invoiceUrl);
+    }
+
+    const invoiceInfo = await invoiceService.saveInvoice(sale);
+
+    return prisma.sale.update({
+      where: { id },
+      data: { invoiceUrl: invoiceInfo.url },
+      include: SALE_INCLUDE,
+    });
   }
 
   async deleteSale(id) {

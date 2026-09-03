@@ -85,6 +85,25 @@ class BikeService {
 
   async updateBike(id, data) {
     try {
+      const existingBike = await prisma.bike.findUnique({
+        where: { id },
+        select: { status: true, isDeleted: true },
+      });
+
+      if (!existingBike || existingBike.isDeleted) {
+        throw { message: 'Bike not found', statusCode: 404 };
+      }
+
+      // Once a bike is sold its details are locked - they are already printed on
+      // the customer's challan. Corrections go through the sale instead.
+      if (existingBike.status === 'SOLD') {
+        throw {
+          statusCode: 400,
+          field: 'status',
+          message: 'This bike has been sold and can no longer be edited',
+        };
+      }
+
       if (data.modelId) {
         const model = await prisma.bikeModel.findUnique({
           where: { id: data.modelId },

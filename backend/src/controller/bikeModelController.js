@@ -4,11 +4,14 @@ const { ApiResponse } = require('../utils/apiResponse');
 class BikeModelController {
   async createBikeModel(req, res, next) {
     try {
-      if (!req.file) {
+      const imageFile = req.files?.imageUrl?.[0];
+      const brochureFile = req.files?.brochureUrl?.[0];
+
+      if (!imageFile) {
         return ApiResponse.badRequest(res, 'Image file is required');
       }
 
-      const bikeModel = await bikeModelService.createBikeModel(req.body, req.file);
+      const bikeModel = await bikeModelService.createBikeModel(req.body, imageFile, brochureFile);
       return ApiResponse.created(res, 'BikeModel created successfully', bikeModel);
     } catch (error) {
       if (error.validationErrors) {
@@ -42,7 +45,12 @@ class BikeModelController {
         return ApiResponse.badRequest(res, 'BikeModel ID is required');
       }
 
-      const bikeModel = await bikeModelService.updateBikeModel(id, req.body, req.file);
+      const bikeModel = await bikeModelService.updateBikeModel(
+        id,
+        req.body,
+        req.files?.imageUrl?.[0],
+        req.files?.brochureUrl?.[0],
+      );
       return ApiResponse.success(res, 'BikeModel updated successfully', bikeModel, 200);
     } catch (error) {
       if (error.validationErrors) {

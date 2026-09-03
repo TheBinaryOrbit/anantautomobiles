@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Download, ArrowLeft, Edit2, Save, X, Eye, RefreshCw, FileText, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { salesApi, bikesApi, bikeModelsApi, accessoriesApi } from '../api/services';
-import { fmtINR, STATIC_BASE } from '../utils/constants';
-import { Button, Modal, Field } from '../components/ui';
+import { fmtINR, STATIC_BASE, PAYMENT_TYPES, PAYMENT_METHODS } from '../utils/constants';
+import { Button, Modal, Field, FormGrid, Input, Select } from '../components/ui';
 
 export default function SalesDetailPage() {
   const { id } = useParams();
@@ -21,6 +21,11 @@ export default function SalesDetailPage() {
   const [assigningBike, setAssigningBike] = useState(null); // { itemId, modelId, color }
   const [selectedBikeId, setSelectedBikeId] = useState('');
   const [bikeSearch, setBikeSearch] = useState('');
+
+  // ── SALE EDIT (amounts, customer, nominee, finance, payment mode) ──
+  const [editModal, setEditModal] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // ── NEW SYSTEM STATES FOR EXCHANGE DIALOGUE ──
   const [exchangingItem, setExchangingItem] = useState(null); // SaleItem instance data object
@@ -173,6 +178,101 @@ export default function SalesDetailPage() {
     }
   };
 
+  // Sale items are deliberately absent here: a booked sale can be corrected,
+  // not restructured.
+  const openEditSale = () => {
+    const addr = sale?.customer?.address || {};
+    setEditForm({
+      customer: {
+        name: sale?.customer?.name || '',
+        phone: sale?.customer?.phone || '',
+        aadhaarNumber: sale?.customer?.aadhaarNumber || '',
+        panNumber: sale?.customer?.panNumber || '',
+        address: {
+          addressLine1: addr.addressLine1 || '',
+          addressLine2: addr.addressLine2 || '',
+          city: addr.city || '',
+          state: addr.state || '',
+          postalCode: addr.postalCode || '',
+        },
+      },
+      nomineeName: sale?.nomineeName || '',
+      nomineeAge: sale?.nomineeAge ?? '',
+      nomineeRelation: sale?.nomineeRelation || '',
+      financeCompany: sale?.financeCompany || '',
+      financeExecutiveName: sale?.financeExecutiveName || '',
+      financeExecutivePhone: sale?.financeExecutivePhone || '',
+      disbursementAmount: sale?.disbursementAmount ?? '',
+      paymentType: sale?.paymentType || 'FULL_PAYMENT',
+      paymentMethod: sale?.paymentMethod || 'CASH',
+      paidAmount: sale?.paidAmount ?? 0,
+      pendingAmount: sale?.pendingAmount ?? 0,
+      notes: sale?.notes || '',
+    });
+    setEditModal(true);
+  };
+
+  const setEditField = (key, value) => setEditForm(f => ({ ...f, [key]: value }));
+  const setEditCustomer = (key, value) => setEditForm(f => ({ ...f, customer: { ...f.customer, [key]: value } }));
+  const setEditAddress = (key, value) => setEditForm(f => ({
+    ...f,
+    customer: { ...f.customer, address: { ...f.customer.address, [key]: value } },
+  }));
+
+  const handleSaveSaleEdit = async () => {
+    if (!editForm) return;
+
+    if (!editForm.customer.name.trim()) {
+      toast.error('Customer name is required');
+      return;
+    }
+    if (editForm.customer.phone.replace(/\D/g, '').length < 10) {
+      toast.error('Customer phone must be at least 10 digits');
+      return;
+    }
+
+    const paidAmount = Number(editForm.paidAmount) || 0;
+    const pendingAmount = Number(editForm.pendingAmount) || 0;
+
+    if (paidAmount < 0 || pendingAmount < 0) {
+      toast.error('Amounts cannot be negative');
+      return;
+    }
+    if (pendingAmount > (sale?.totalAmount || 0)) {
+      toast.error('Pending amount cannot exceed the sale total');
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      const response = await salesApi.update(id, {
+        customer: editForm.customer,
+        nomineeName: editForm.nomineeName,
+        nomineeAge: editForm.nomineeAge,
+        nomineeRelation: editForm.nomineeRelation,
+        financeCompany: editForm.financeCompany,
+        financeExecutiveName: editForm.financeExecutiveName,
+        financeExecutivePhone: editForm.financeExecutivePhone,
+        disbursementAmount: editForm.disbursementAmount,
+        paymentType: editForm.paymentType,
+        paymentMethod: editForm.paymentMethod,
+        paidAmount,
+        pendingAmount,
+        notes: editForm.notes,
+      });
+
+      const freshSale = response.data || response;
+      setSale(freshSale);
+      setPendingAmount(freshSale?.pendingAmount || 0);
+      setEditModal(false);
+      toast.success('Sale updated and challan regenerated');
+    } catch (error) {
+      toast.error(error.message || 'Failed to update the sale');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleDownloadInvoice = async () => {
     if (!sale.invoiceUrl) {
       toast.error('Invoice is not available');
@@ -269,7 +369,28 @@ export default function SalesDetailPage() {
           Back to Sales
         </button>
         <div style={{ display: 'flex', gap: '10px' }}>
-          
+            <button
+              onClick={openEditSale}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 500,
+                transition: 'all 0.2s ease',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              <Edit2 size={16} />
+              Edit Sale
+            </button>
+
             <button
               onClick={handleGeneratePDISlip}
               disabled={generating}
@@ -689,6 +810,73 @@ export default function SalesDetailPage() {
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
             <Button onClick={() => { setAssigningBike(null); setBikeSearch(''); setSelectedBikeId(''); }} variant="secondary">Cancel</Button>
             <Button onClick={handleAssignBike} disabled={!selectedBikeId}>Finalize Challan</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── EDIT SALE MODAL (no sale items - those are locked once booked) ── */}
+      {editModal && editForm && (
+        <Modal title={`Edit Sale - ${sale.saleNumber || sale.id?.slice(0, 8)}\u2026`} onClose={() => setEditModal(false)} width={780}>
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: 12, borderRadius: 8, fontSize: 12, color: '#1e3a8a', marginBottom: 18 }}>
+            Sale items cannot be changed after a sale is booked. Use <strong>Exchange</strong> on a line item for that. Saving here regenerates the challan.
+          </div>
+
+          <div style={{ maxHeight: '58vh', overflowY: 'auto', paddingRight: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', marginBottom: 12 }}>Customer Information</div>
+            <FormGrid cols={3}>
+              <Field label="Name *"><Input value={editForm.customer.name} onChange={e => setEditCustomer('name', e.target.value)} /></Field>
+              <Field label="Phone *"><Input value={editForm.customer.phone} onChange={e => setEditCustomer('phone', e.target.value)} /></Field>
+              <Field label="Aadhaar Number"><Input value={editForm.customer.aadhaarNumber} onChange={e => setEditCustomer('aadhaarNumber', e.target.value)} /></Field>
+              <Field label="PAN Number"><Input value={editForm.customer.panNumber} onChange={e => setEditCustomer('panNumber', e.target.value)} /></Field>
+              <Field label="Address Line 1" style={{ gridColumn: 'span 2' }}><Input value={editForm.customer.address.addressLine1} onChange={e => setEditAddress('addressLine1', e.target.value)} /></Field>
+              <Field label="Address Line 2" style={{ gridColumn: 'span 2' }}><Input value={editForm.customer.address.addressLine2} onChange={e => setEditAddress('addressLine2', e.target.value)} /></Field>
+              <Field label="City"><Input value={editForm.customer.address.city} onChange={e => setEditAddress('city', e.target.value)} /></Field>
+              <Field label="State"><Input value={editForm.customer.address.state} onChange={e => setEditAddress('state', e.target.value)} /></Field>
+              <Field label="Postal Code"><Input value={editForm.customer.address.postalCode} onChange={e => setEditAddress('postalCode', e.target.value)} /></Field>
+            </FormGrid>
+
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', margin: '24px 0 12px', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>Nominee</div>
+            <FormGrid cols={3}>
+              <Field label="Nominee Name"><Input value={editForm.nomineeName} onChange={e => setEditField('nomineeName', e.target.value)} /></Field>
+              <Field label="Nominee Age"><Input type="number" value={editForm.nomineeAge} onChange={e => setEditField('nomineeAge', e.target.value)} /></Field>
+              <Field label="Relation"><Input value={editForm.nomineeRelation} onChange={e => setEditField('nomineeRelation', e.target.value)} /></Field>
+            </FormGrid>
+
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', margin: '24px 0 12px', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>Finance Details</div>
+            <FormGrid cols={2}>
+              <Field label="Finance Company"><Input value={editForm.financeCompany} onChange={e => setEditField('financeCompany', e.target.value)} placeholder="e.g. TATA CAPITAL" /></Field>
+              <Field label="Disbursement Amount"><Input type="number" value={editForm.disbursementAmount} onChange={e => setEditField('disbursementAmount', e.target.value)} /></Field>
+              <Field label="Executive Name"><Input value={editForm.financeExecutiveName} onChange={e => setEditField('financeExecutiveName', e.target.value)} /></Field>
+              <Field label="Executive Phone"><Input value={editForm.financeExecutivePhone} onChange={e => setEditField('financeExecutivePhone', e.target.value)} /></Field>
+            </FormGrid>
+
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', margin: '24px 0 12px', paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>Payment Mode & Amounts</div>
+            <FormGrid cols={2}>
+              <Field label="Payment Type">
+                <Select value={editForm.paymentType} onChange={e => setEditField('paymentType', e.target.value)}>
+                  {PAYMENT_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                </Select>
+              </Field>
+              <Field label="Payment Method">
+                <Select value={editForm.paymentMethod} onChange={e => setEditField('paymentMethod', e.target.value)}>
+                  {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                </Select>
+              </Field>
+              <Field label={`Amount Paid (total ${fmtINR(sale?.totalAmount || 0)})`}>
+                <Input type="number" value={editForm.paidAmount} onChange={e => setEditField('paidAmount', e.target.value)} />
+              </Field>
+              <Field label="Pending Balance">
+                <Input type="number" value={editForm.pendingAmount} onChange={e => setEditField('pendingAmount', e.target.value)} />
+              </Field>
+              <Field label="Notes" style={{ gridColumn: '1 / -1' }}>
+                <Input value={editForm.notes} onChange={e => setEditField('notes', e.target.value)} placeholder="Any special instructions or commitments..." />
+              </Field>
+            </FormGrid>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, marginTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
+            <Button variant="secondary" onClick={() => setEditModal(false)} disabled={savingEdit}>Cancel</Button>
+            <Button onClick={handleSaveSaleEdit} disabled={savingEdit}>{savingEdit ? 'Saving\u2026' : 'Save Changes'}</Button>
           </div>
         </Modal>
       )}

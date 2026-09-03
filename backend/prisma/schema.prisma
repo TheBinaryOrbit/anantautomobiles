@@ -36,6 +36,8 @@ model BikeModel {
   brand     String
   category  String
   imageUrl  String
+  // optional PDF brochure for the model (uploaded from the admin panel)
+  brochureUrl String?
   remark    String?
 
   // optional fields for more detailed information about the bike model
@@ -198,6 +200,17 @@ model Sale {
   exchange excahgebikes?
 
   @@map("sales")
+}
+
+/// Named, monotonically increasing counters (e.g. the physical challan book sequence).
+model Counter {
+  id    String @id
+  value Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("counters")
 }
 
 model Discount {

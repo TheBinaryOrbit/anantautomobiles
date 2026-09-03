@@ -17,6 +17,7 @@ export default function BikeModelsPage() {
   const [modal, setModal]       = useState(null);
   const [form, setForm]         = useState(EMPTY);
   const [file, setFile]         = useState(null);
+  const [brochure, setBrochure] = useState(null);
   const [confirm, setConfirm]   = useState(null);
   const [loading, setLoading]   = useState(false);
 
@@ -40,10 +41,17 @@ export default function BikeModelsPage() {
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
+  // imageUrl / brochureUrl are server-managed paths - only send them as files
+  const SERVER_MANAGED = ['imageUrl', 'brochureUrl'];
+
   const buildFD = () => {
     const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => { if (v !== undefined && v !== '') fd.append(k, v); });
+    Object.entries(form).forEach(([k, v]) => {
+      if (SERVER_MANAGED.includes(k)) return;
+      if (v !== undefined && v !== '') fd.append(k, v);
+    });
     if (file) fd.append('imageUrl', file);
+    if (brochure) fd.append('brochureUrl', brochure);
     return fd;
   };
 
@@ -57,13 +65,23 @@ export default function BikeModelsPage() {
       }
     }
 
+    if (!modal.id && !file) {
+      toast.error('Please upload an image for the model');
+      return;
+    }
+
+    if (brochure && brochure.type !== 'application/pdf') {
+      toast.error('Brochure must be a PDF file');
+      return;
+    }
+
     setLoading(true);
     try {
       const fd = buildFD();
       if (modal.id) await bikeModelsApi.update(modal.id, fd);
       else           await bikeModelsApi.create(fd);
       toast.success(modal.id ? 'Model updated' : 'Model added');
-      load(); setModal(null); setFile(null);
+      load(); setModal(null); setFile(null); setBrochure(null);
     } catch (err) { toast.error(err.message); }
     setLoading(false);
   };
@@ -77,8 +95,8 @@ export default function BikeModelsPage() {
     setConfirm(null);
   };
 
-  const openCreate = () => { setForm(EMPTY); setFile(null); setModal({ title: 'Add Bike Model' }); };
-  const openEdit   = (row) => { setForm({ ...row }); setFile(null); setModal({ id: row.id, title: 'Edit Bike Model' }); };
+  const openCreate = () => { setForm(EMPTY); setFile(null); setBrochure(null); setModal({ title: 'Add Bike Model' }); };
+  const openEdit   = (row) => { setForm({ ...row }); setFile(null); setBrochure(null); setModal({ id: row.id, title: 'Edit Bike Model' }); };
 
   const cols = [
     { key: 'imageUrl', label: 'Image', render: r => r.imageUrl
@@ -90,6 +108,9 @@ export default function BikeModelsPage() {
     { key: 'category',      label: 'Category' },
     { key: 'engineCapacity',label: 'Engine', render: r => r.engineCapacity ? `${r.engineCapacity}cc` : '—' },
     { key: 'purchasePrice',  label: 'Purchase Price', render: r => fmtINR(r.purchasePrice) },
+    { key: 'brochureUrl',   label: 'Brochure', render: r => r.brochureUrl
+        ? <a href={`${STATIC_BASE}${r.brochureUrl}`} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-dark)', fontWeight: 600, fontSize: 12 }}>View PDF</a>
+        : <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>—</span> },
     { key: 'cgstRate',      label: 'CGST%', render: r => r.cgstRate ? `${r.cgstRate}%` : '0%' },
     { key: 'sgstRate',      label: 'SGST%', render: r => r.sgstRate ? `${r.sgstRate}%` : '0%' },
   ];
@@ -118,6 +139,18 @@ export default function BikeModelsPage() {
               {modal.id && !file && form.imageUrl && (
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Current: {form.imageUrl} — upload new to replace</div>
               )}
+            </Field>
+            <Field label="Brochure (PDF, optional)" style={{ gridColumn: '1/-1' }}>
+              <input type="file" accept="application/pdf" onChange={e => setBrochure(e.target.files[0] || null)} style={{ fontSize: 13, fontFamily: 'var(--font-sans)' }} />
+              {brochure ? (
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Selected: {brochure.name}</div>
+              ) : form.brochureUrl ? (
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  Current:{' '}
+                  <a href={`${STATIC_BASE}${form.brochureUrl}`} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-dark)' }}>view brochure</a>
+                  {' '}— upload new to replace
+                </div>
+              ) : null}
             </Field>
             <Field label="Engine Capacity (cc) *"><Input type="number" value={form.engineCapacity || ''} onChange={e => set('engineCapacity', e.target.value)} /></Field>
             <Field label="Launch Year *"><Input type="number" value={form.launchYear || ''} onChange={e => set('launchYear', e.target.value)} /></Field>

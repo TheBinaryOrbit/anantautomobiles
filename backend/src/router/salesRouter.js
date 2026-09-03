@@ -13,6 +13,8 @@ router.get('/:id/pdi-slip', authMiddleware, checkPermission('sales_view'), (req,
 router.post('/create', authMiddleware, checkPermission('sales_create'), (req, res, next) => salesController.createSale(req, res, next));
 router.patch('/items/:id/assign-bike', authMiddleware, checkPermission('sales_edit'), (req, res, next) => salesController.assignBike(req, res, next));
 router.patch('/:id/status', authMiddleware, checkPermission('sales_updateStatus'), (req, res, next) => salesController.updateSaleStatus(req, res, next));
+// Amounts, customer details, nominee, finance details and payment mode only - never the sale items
+router.patch('/:id', authMiddleware, checkPermission('sales_edit'), (req, res, next) => salesController.updateSale(req, res, next));
 router.patch('/:id/pending', authMiddleware, checkPermission('sales_edit'), (req, res, next) => salesController.updatePendingAmount(req, res, next));
 router.delete('/:id', authMiddleware, checkPermission('sales_delete'), (req, res, next) => salesController.deleteSale(req, res, next));
 

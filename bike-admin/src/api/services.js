@@ -64,6 +64,8 @@ export const salesApi = {
   getAll:              ()                    => api.get('/sales').then(r => r.data),
   getSale:             (id)                  => api.get(`/sales/${id}`).then(r => r.data),
   create:              (body)                => api.post('/sales/create', body).then(r => r.data),
+  // Amounts, customer info, nominee, finance details and payment mode only - never the items
+  update:              (id, body)            => api.patch(`/sales/${id}`, body).then(r => r.data),
   generatePDISlip:     (id)                  => api.get(`/sales/${id}/pdi-slip`).then(r => r.data),
   assignBike:          (itemId, bikeId)      => api.patch(`/sales/items/${itemId}/assign-bike`, { bikeId }).then(r => r.data),
   updateStatus:        (id, status)          => api.patch(`/sales/${id}/status`, { status }).then(r => r.data),

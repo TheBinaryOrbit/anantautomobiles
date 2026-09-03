@@ -20,10 +20,22 @@ const storage = multer.diskStorage({
   },
 });
 
-// Filter for images only
+// Fields that carry a PDF document rather than an image (e.g. bike model brochure)
+const PDF_FIELDS = ['brochureUrl'];
+
+// Filter for images, except for the PDF document fields listed above
 const fileFilter = (req, file, cb) => {
   const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  
+
+  if (PDF_FIELDS.includes(file.fieldname)) {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Brochure must be a PDF file'), false);
+    }
+    return;
+  }
+
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -36,7 +48,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max file size
+    fileSize: 10 * 1024 * 1024, // 10MB max file size (brochure PDFs run larger than images)
   },
 });
 

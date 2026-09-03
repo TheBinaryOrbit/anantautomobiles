@@ -215,7 +215,7 @@ export function Modal({ title, onClose, children, width = 600 }) {
 /* ──────────────────────────────────────────────
    Table
 ────────────────────────────────────────────── */
-export function Table({ cols, rows, onEdit, onDelete, extraActions }) {
+export function Table({ cols, rows, onEdit, onDelete, extraActions, canEdit, canDelete }) {
   return (
     <div style={{ overflowX: 'auto', background: TOKENS.colors.bgPrimary, borderRadius: 12, border: `1px solid ${TOKENS.colors.border}`, boxShadow: TOKENS.shadows.sm }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -254,12 +254,12 @@ export function Table({ cols, rows, onEdit, onDelete, extraActions }) {
               {(onEdit || onDelete || extraActions) && (
                 <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {extraActions && extraActions(row)}
-                  {onEdit && (
+                  {onEdit && (!canEdit || canEdit(row)) && (
                     <button onClick={() => onEdit(row)} style={{ background: 'transparent', color: TOKENS.colors.brand, border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginRight: 6, fontFamily: 'var(--font-sans, "Inter", sans-serif)' }}>
                       Edit
                     </button>
                   )}
-                  {onDelete && (
+                  {onDelete && (!canDelete || canDelete(row)) && (
                     <button onClick={() => onDelete(row)} style={{ background: 'transparent', color: TOKENS.colors.danger, border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans, "Inter", sans-serif)' }}>
                       Delete
                     </button>

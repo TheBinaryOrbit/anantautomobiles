@@ -2,6 +2,30 @@ const prisma = require('../config/db');
 const fs = require('fs');
 const path = require('path');
 
+const UPLOAD_DIR = path.join(__dirname, '../../uploads');
+
+/** Removes half-uploaded files when a request is rejected. */
+function discardUploads(...files) {
+  files.filter(Boolean).forEach((file) => {
+    try {
+      if (file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    } catch (error) {
+      console.error('Error discarding upload:', error.message);
+    }
+  });
+}
+
+/** Deletes a previously stored /uploads/<name> file, if it is still on disk. */
+function removeStoredFile(storedUrl) {
+  if (!storedUrl) return;
+  try {
+    const filePath = path.join(UPLOAD_DIR, storedUrl.replace('/uploads/', ''));
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (error) {
+    console.error('Error removing stored file:', error.message);
+  }
+}
+
 class BikeModelService {
   validateCreateData(data, file) {
     const errors = [];
@@ -55,12 +79,10 @@ class BikeModelService {
     return errors;
   }
 
-  async createBikeModel(data, file) {
+  async createBikeModel(data, file, brochureFile) {
     const validationErrors = this.validateCreateData(data, file);
     if (validationErrors.length > 0) {
-      if (file) {
-        fs.unlinkSync(file.path);
-      }
+      discardUploads(file, brochureFile);
       throw { validationErrors, message: 'Validation failed' };
     }
 
@@ -74,6 +96,7 @@ class BikeModelService {
           brand: data.brand,
           category: data.category,
           imageUrl,
+          brochureUrl: brochureFile ? `/uploads/${brochureFile.filename}` : null,
           remark: data.remark || data.description || null,
           engineCapacity: data.engineCapacity ? parseInt(data.engineCapacity) : null,
           fuelType: data.fuelType || null,
@@ -95,9 +118,7 @@ class BikeModelService {
 
       return bikeModel;
     } catch (error) {
-      if (file) {
-        fs.unlinkSync(file.path);
-      }
+      discardUploads(file, brochureFile);
       if (error.code === 'P2002') {
         throw {
           message: `BikeModel with this ${error.meta.target[0]} already exists`,
@@ -108,12 +129,10 @@ class BikeModelService {
     }
   }
 
-  async updateBikeModel(id, data, file) {
+  async updateBikeModel(id, data, file, brochureFile) {
     const validationErrors = this.validateCreateData(data, file || { filename: 'existing' });
     if (validationErrors.length > 0) {
-      if (file) {
-        fs.unlinkSync(file.path);
-      }
+      discardUploads(file, brochureFile);
       throw { validationErrors, message: 'Validation failed' };
     }
 
@@ -141,20 +160,21 @@ class BikeModelService {
         hsnCode: data.hsnCode || null,
       };
 
-      // If new file is provided, update image and delete old one
-      if (file) {
+      // If new files are provided, swap them in and delete the ones they replace
+      if (file || brochureFile) {
         const existingBikeModel = await prisma.bikeModel.findUnique({
           where: { id },
         });
 
-        if (existingBikeModel && existingBikeModel.imageUrl) {
-          const oldImagePath = path.join(__dirname, '../../upload', existingBikeModel.imageUrl.replace('/uploads/', ''));
-          if (fs.existsSync(oldImagePath)) {
-            fs.unlinkSync(oldImagePath);
-          }
+        if (file) {
+          removeStoredFile(existingBikeModel?.imageUrl);
+          updateData.imageUrl = `/uploads/${file.filename}`;
         }
 
-        updateData.imageUrl = `/uploads/${file.filename}`;
+        if (brochureFile) {
+          removeStoredFile(existingBikeModel?.brochureUrl);
+          updateData.brochureUrl = `/uploads/${brochureFile.filename}`;
+        }
       }
 
       const bikeModel = await prisma.bikeModel.update({
@@ -164,9 +184,7 @@ class BikeModelService {
 
       return bikeModel;
     } catch (error) {
-      if (file) {
-        fs.unlinkSync(file.path);
-      }
+      discardUploads(file, brochureFile);
       if (error.code === 'P2025') {
         throw { message: 'BikeModel not found', statusCode: 404 };
       }
@@ -190,13 +208,9 @@ class BikeModelService {
         throw { message: 'BikeModel not found', statusCode: 404 };
       }
 
-      // Delete image file if exists
-      if (bikeModel.imageUrl) {
-        const imagePath = path.join(__dirname, '../../upload', bikeModel.imageUrl.replace('/uploads/', ''));
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-        }
-      }
+      // Delete the image and brochure files if they exist
+      removeStoredFile(bikeModel.imageUrl);
+      removeStoredFile(bikeModel.brochureUrl);
 
       const deletedBikeModel = await prisma.bikeModel.update({
         where: { id },
