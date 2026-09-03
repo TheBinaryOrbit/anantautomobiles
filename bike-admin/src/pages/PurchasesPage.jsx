@@ -51,6 +51,7 @@ export default function PurchasesPage() {
   };
 
   const cols = [
+    {key: 'notes', label: 'Challan No'},
     { key: 'purchaseNumber', label: 'Purchase No'},
     { key: 'purchaseDate', label: 'Date', render: r => new Date(r.purchaseDate).toLocaleDateString() },
     { key: 'supplier', label: 'Supplier', render: r => r.supplier?.name || '—' },
